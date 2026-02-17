@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
+import 'package:voxtrade_core/assembler/common/enum.dart';
 
+import '../Components/Loader.dart';
 import '../assembler/Services/roles_Services.dart';
 
 class HomePage extends StatelessWidget {
@@ -8,17 +11,20 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          ElevatedButton(
+
+          OutlinedButton(
+
+              onPressed: (){}, child: Text("Sell")),
+          FilledButton(
             onPressed: () async {
               final result = await GetAllRoles();
               print('name:=========================');
               print(result.first.role_name_en);
             },
-            child: Text("Press Me"
-              //,style: TextStyle(color: Colors.green),
-            ),
+            child: Loader(height: 20,width: 25,)
             // style: ElevatedButton.styleFrom(
             //   backgroundColor: Colors.black26,
             //   textStyle: TextStyle(
@@ -26,6 +32,9 @@ class HomePage extends StatelessWidget {
             //   ),
             // ),
           ),
+          Button(Purpose: ButtonPurpose.primary, IsLoading: false, Lable: "buy"),
+          ElevatedButton(onPressed: (){}, child:Text("Delete"))
+
         ],
       ),
     );
