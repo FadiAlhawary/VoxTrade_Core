@@ -1,4 +1,20 @@
- ContactInfo({
+class ContactInfo {
+  final int id;
+  final int? userId;
+  final String primaryEmail;
+  final String? altEmail;
+  final String primaryPhoneNumber;
+  final String? altPhoneNumber;
+  final bool? isPrimaryEmailActive;
+  final bool? isAltEmailActive;
+  final bool? isPrimaryPhoneActive;
+  final bool? isAltPhoneActive;
+  final String? fax;
+  final bool? isFaxActive;
+  final DateTime? createdAt;
+  final bool? isDeleted;
+
+  ContactInfo({
     required this.id,
     this.userId,
     required this.primaryEmail,
