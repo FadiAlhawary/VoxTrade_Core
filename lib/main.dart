@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/Loader.dart';
 import 'package:voxtrade_core/assembler/Controller/UIThemes_Controller.dart';
 import 'package:voxtrade_core/routes/Routes.dart';
 
@@ -25,7 +26,10 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Obx((){
       final themeList = themeController.themes.value;
+         if(themeList==null || themeList.isEmpty || themeList.first.style ==null)
+               return Loader();
 
+      final style = themeList.first.style!;
       return GetMaterialApp(
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -39,9 +43,39 @@ class _MyAppState extends State<MyApp> {
             onSecondary: Colors.black,
           ),
 
+
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              backgroundColor: Color(0xFF4988C4),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A1AFF),
+              backgroundColor: Color(0xFFFF0000),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+
+
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
