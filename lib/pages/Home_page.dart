@@ -1,42 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
+import 'package:voxtrade_core/assembler/Controller/MarketNewsController.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 
-import '../Components/Loader.dart';
-import '../assembler/Services/roles_Services.dart';
-
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
+
+  final MarketNewsController marketNewsController = Get.put(
+    MarketNewsController(),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
+    final nameController = TextEditingController();
+    final nameRx = ''.obs;
+    return Column(
 
-          OutlinedButton(
-
-              onPressed: (){}, child: Text("Sell")),
-          FilledButton(
-            onPressed: () async {
-              final result = await GetAllRoles();
-              print('name:=========================');
-              print(result.first.role_name_en);
-            },
-            child: Loader(height: 20,width: 25,)
-            // style: ElevatedButton.styleFrom(
-            //   backgroundColor: Colors.black26,
-            //   textStyle: TextStyle(
-            //     color: Colors.green
-            //   ),
-            // ),
-          ),
-          Button(Purpose: ButtonPurpose.primary, IsLoading: false, Lable: "buy"),
-          ElevatedButton(onPressed: (){}, child:Text("Delete"))
-
-        ],
-      ),
+      children: [
+        SizedBox(height: 50,),
+        Button(
+          purpose: ButtonPurpose.secondary,
+          isLoading: false,
+          label: "Load News",
+          onPress: () async {
+            await marketNewsController.fetchNews();
+            SnackBarComp.show(
+              "Successfully fetched market News",
+              title: 'Success',
+            );
+          },
+        ),
+        SizedBox(height: 50,),
+        Expanded(
+          child: Obx(() {
+            // if (marketNewsController.isLoading.value) {
+            //   return Center(child: CircularProgressIndicator());
+            // }
+          
+            if (marketNewsController.marketNews.isEmpty) {
+              return Center(child: Text("No news available"));
+            }
+          
+            return  RefreshIndicator(
+              onRefresh: () async {
+                await marketNewsController.fetchNews(); // reload data
+              },
+              child: ListView.builder(
+                  itemCount: marketNewsController.marketNews.length,
+                  itemBuilder: (context, ind) {
+                    final news = marketNewsController.marketNews[ind];
+                    return ListTile(title: Text(news.headline));
+                  },
+                ),
+            );
+            
+          }),
+        ),
+      ],
     );
   }
 }

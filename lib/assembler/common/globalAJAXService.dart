@@ -2,7 +2,15 @@ import 'package:dio/dio.dart';
 
 import '.env.dart';
 
-final dio = Dio();
+final Dio dio = Dio()
+  ..interceptors.add(
+    LogInterceptor(
+      request: true,
+      requestBody: true,
+      responseBody: true,
+      responseHeader: false,
+    ),
+  );
 
 Future<T> sendHttpRequest<T>(String url, {Map<String, dynamic>? param , required T Function(dynamic json) fromJson}) async {
   Response response;

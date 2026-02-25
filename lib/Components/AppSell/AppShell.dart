@@ -20,7 +20,7 @@ class AppShell extends StatelessWidget {
 
           body: IndexedStack(
             index: conroller.tabIndex,
-            children: const [HomePage(), Test()],
+            children:  [HomePage(), Test()],
           ),
           bottomNavigationBar: BottomNavigationBar(
             selectedFontSize: 15,

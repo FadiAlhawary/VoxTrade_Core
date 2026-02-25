@@ -10,9 +10,10 @@ class Loader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget indicator = SizedBox(
-      height: height,
-      width: width,
-      child: CircularProgressIndicator(strokeAlign: 5, trackGap: 20),
+      height: height ?? 50,
+      width: width ?? 50,
+        child: CircularProgressIndicator(strokeAlign: 5, trackGap: 20 ),
+
     );
     return isCenter ? Center(child: indicator) : indicator;
   }
