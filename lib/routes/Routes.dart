@@ -9,7 +9,8 @@ part 'string.dart';
 
 class Routes {
   static List<GetPage> routes = [
-    GetPage(name: RouteStrings.root, page: () => const SignInPage()),
+    GetPage(name: RouteStrings.root, page: () => AppShell()),
+    // GetPage(name: RouteStrings.root, page: () => const SignInPage()),
     GetPage(name: RouteStrings.appShell, page: () => const AppShell()),
     GetPage(name: RouteStrings.signIn, page: () => const SignInPage()),
     GetPage(name: RouteStrings.signUp, page: () => const SignUpPage()),

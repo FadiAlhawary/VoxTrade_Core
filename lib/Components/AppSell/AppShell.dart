@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/assembler/common/enum.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
 
 import '../../assembler/Controller/NavBarController.dart';
@@ -20,13 +21,13 @@ class AppShell extends StatelessWidget {
 
           body: IndexedStack(
             index: conroller.tabIndex,
-            children:  [HomePage(), Test()],
+            children: [HomePage(), Test()],
           ),
           bottomNavigationBar: BottomNavigationBar(
             selectedFontSize: 15,
             showSelectedLabels: true,
             showUnselectedLabels: false,
-            selectedItemColor: Colors.amber,
+            selectedItemColor: primaryColor,
             unselectedItemColor: Colors.grey.shade300,
             currentIndex: conroller.tabIndex,
             onTap: context.changeTabIndex,

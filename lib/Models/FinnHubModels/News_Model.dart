@@ -1,4 +1,4 @@
-class MarketNews {
+class News {
   final String category;
   final String headline;
   final int datetime;
@@ -9,7 +9,7 @@ class MarketNews {
   final String summary;
   final String url;
 
-  MarketNews({
+  News({
     required this.id,
     required this.category,
     required this.datetime,
@@ -21,8 +21,8 @@ class MarketNews {
     required this.headline,
   });
 
-  factory MarketNews.fromJson(Map<String, dynamic> json) {
-    return MarketNews(
+  factory News.fromJson(Map<String, dynamic> json) {
+    return News(
       category: json['category'],
       datetime: json['datetime'],
       id: json['id'],
