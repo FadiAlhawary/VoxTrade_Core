@@ -12,6 +12,13 @@ import '../Services/FinnHub_Services.dart';
 class MarketNewsController extends GetxController {
   RxList<MarketNews> marketNews = <MarketNews>[].obs;
 
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchNews();
+  }
+
   Future<void> fetchNews({String category = "general"}) async {
     try{
       var data = await getMarketNews(category: category);
