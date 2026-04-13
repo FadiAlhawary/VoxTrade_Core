@@ -94,11 +94,7 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
         return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       }
 
-      await widget.newsController.fetchCompanyNews(
-        symbol: symbol ?? "AAPL",
-        from: from ?? formatDate(oneYearAgo),
-        to: to ?? formatDate(now),
-      );
+      await widget.newsController.fetchCompanyNews();
     }
   }
 

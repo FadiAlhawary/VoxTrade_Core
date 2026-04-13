@@ -8,7 +8,7 @@ import 'package:voxtrade_core/assembler/common/enum.dart';
 class HomePage extends StatelessWidget {
   HomePage({super.key});
 
-  final NewsController newsController = Get.put(NewsController());
+  final newsController = Get.find<NewsController>();
 
   @override
   Widget build(BuildContext context) {

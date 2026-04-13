@@ -6,27 +6,37 @@ import 'package:voxtrade_core/assembler/common/enum.dart';
 
 import '../Services/FinnHub_Services.dart';
 
+/// Finnhub / backend expect `from` and `to` as YYYY-MM-DD, not full ISO-8601.
+String _companyNewsDateOnly(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 class NewsController extends GetxController {
   RxList<News> marketNews = <News>[].obs;
   RxList<News> companyNews = <News>[].obs;
   RxBool isMarketNewsLoading = false.obs;
   RxBool isCompanyNewsLoading = false.obs;
+  RxString selectedSymbol = 'AAPL'.obs;
+  RxString selectedFromDate =
+      _companyNewsDateOnly(
+        DateTime.now().subtract(const Duration(days: 365)),
+      ).obs;
+  RxString selectedToDate = _companyNewsDateOnly(DateTime.now()).obs;
 
   @override
   void onInit() {
     super.onInit();
     fetchMarketNews();
-    fetchCompanyNews(symbol: "AAPL", from: "2025-01-01", to: "2025-12-31");
+    fetchCompanyNews();
   }
 
-  Future<void> fetchCompanyNews({
-    required String symbol,
-    required String from,
-    required String to,
-  }) async {
+  Future<void> fetchCompanyNews() async {
     try {
       isCompanyNewsLoading.value = true;
-      var data = await getCompanyNews(symbol: symbol, from: from, to: to);
+      var data = await getCompanyNews(
+        symbol: selectedSymbol.value,
+        from: selectedFromDate.value,
+        to: selectedToDate.value,
+      );
       companyNews.value = data;
     } catch (e) {
       SnackBarComp.show(

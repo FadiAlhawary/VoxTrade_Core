@@ -13,7 +13,7 @@ class TextBoxField extends StatefulWidget {
   final Icon? sufixIcon;
   final VoidCallback? onSufixIconClick;
   final bool isisSenstive;
-  final VoidCallback? onChange;
+  final Function(String value)? onChange;
 
   const TextBoxField({
     super.key,
@@ -125,6 +125,7 @@ class _TextBoxFieldState extends State<TextBoxField> {
         onChanged: (value) {
           // widget.objectName.value=value;
           widget.rxObjectName?.value = value;
+          widget.onChange?.call(value);
         },
         //onChanged: widget.onChange != null ? widget.onChange : null,
       ),

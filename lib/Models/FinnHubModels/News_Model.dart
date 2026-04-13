@@ -46,7 +46,5 @@ class News {
       'url': url,
       'headline': headline,
     };
-
-    }
   }
-
+}
