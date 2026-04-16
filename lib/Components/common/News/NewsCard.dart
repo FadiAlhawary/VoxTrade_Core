@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:voxtrade_core/Components/Loader.dart';
-import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
 import 'package:voxtrade_core/Components/common/News/NewFliter.dart';
 import 'package:voxtrade_core/assembler/Controller/NewsController.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 
 class NewsCard extends StatefulWidget {
@@ -87,19 +88,14 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
     if (widget.type == NewsType.market) {
       await widget.newsController.fetchMarketNews();
     } else {
-      final now = DateTime.now();
-      final oneYearAgo = now.subtract(const Duration(days: 365));
-
-      String formatDate(DateTime date) {
-        return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-      }
-
       await widget.newsController.fetchCompanyNews();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeController = Get.find<ThemeController>();
+
     return Column(
       children: [
         if (widget.type == NewsType.company &&
@@ -167,7 +163,10 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          color: Colors.grey.shade900,
+                          color:
+                              themeController.isDarkMode.value
+                                  ? Colors.grey.shade900
+                                  : Colors.white,
                           child: Column(
                             children: [
                               Text(news.headline),

@@ -33,3 +33,5 @@ enum NewsType {
   const NewsType(this.referenceNewsTypeId);
 }
 Color primaryColor = Color(0xFF4988C4);
+// Color secondaryColor = Color(0xFFF5F5F5);
+
