@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
 import 'package:voxtrade_core/Components/common/TextField/TextBoxField.dart';
@@ -20,27 +21,120 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _dateOfBirthController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _fullNameController.dispose();
+    _dateOfBirthController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  Future<void> _pickDateOfBirth() async {
+    final DateTime now = DateTime.now();
+    final DateTime initialDate = DateTime(
+      now.year - 18,
+      now.month,
+      now.day,
+    );
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+
+    if (selectedDate == null) return;
+    final String formattedDate =
+        '${selectedDate.year.toString().padLeft(4, '0')}-'
+        '${selectedDate.month.toString().padLeft(2, '0')}-'
+        '${selectedDate.day.toString().padLeft(2, '0')}';
+
+    _dateOfBirthController.text = formattedDate;
+  }
+
   Future<void> _onCreateAccount() async {
-    final String fullName = _nameController.text.trim();
+    final String fullName = _fullNameController.text.trim();
+    final String dateOfBirth = _dateOfBirthController.text.trim();
+    final String phoneNumber = _phoneController.text.trim();
     final String email = _emailController.text.trim();
     final String password = _passwordController.text;
 
     if (fullName.isEmpty) {
       SnackBarComp.show(
         'Full name is required.',
+        title: 'Validation Error',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+
+    final List<String> nameParts = fullName
+        .split(RegExp(r'\s+'))
+        .where((String p) => p.isNotEmpty)
+        .toList();
+    if (nameParts.length < 2) {
+      SnackBarComp.show(
+        'Enter first and last name separated by a space (e.g. Jane Doe).',
+        title: 'Validation Error',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+
+    final String firstName = nameParts.first;
+    final String lastName = nameParts.sublist(1).join(' ');
+
+    if (dateOfBirth.isEmpty) {
+      SnackBarComp.show(
+        'Date of birth is required.',
+        title: 'Validation Error',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+
+    if (DateTime.tryParse(dateOfBirth) == null) {
+      SnackBarComp.show(
+        'Date of birth must be a valid date.',
+        title: 'Validation Error',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+
+    String normalizedPhoneNumber = phoneNumber.replaceAll(
+      RegExp(r'[\s\-\(\)]'),
+      '',
+    );
+    if (normalizedPhoneNumber.isEmpty) {
+      SnackBarComp.show(
+        'Phone number is required.',
+        title: 'Validation Error',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+    if (!normalizedPhoneNumber.startsWith('+')) {
+      normalizedPhoneNumber = '+$normalizedPhoneNumber';
+    }
+    final String phoneDigits = normalizedPhoneNumber.substring(1).replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
+    normalizedPhoneNumber = '+$phoneDigits';
+    final bool isValidPhone = RegExp(r'^[1-9]\d{6,14}$').hasMatch(phoneDigits);
+    if (!isValidPhone) {
+      SnackBarComp.show(
+        'Enter a valid number with country code (e.g. +961 3 123 456).',
         title: 'Validation Error',
         status: SnackBarCompStatus.warning,
       );
@@ -77,6 +171,16 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() {
       _isLoading = false;
     });
+
+    final Map<String, String> signUpPayload = {
+      'firstName': firstName,
+      'lastName': lastName,
+      'dateOfBirth': dateOfBirth,
+      'phoneNumber': normalizedPhoneNumber,
+      'email': email,
+      'password': password,
+    };
+    debugPrint('Sign-up payload: $signUpPayload');
 
     SnackBarComp.show(
       'Account created. Please sign in.',
@@ -127,12 +231,93 @@ class _SignUpPageState extends State<SignUpPage> {
                   const SizedBox(height: 28),
                   TextBoxField(
                     placeHolder: 'Full Name',
-                    objectName: _nameController,
+                    objectName: _fullNameController,
                     preFixIcon: const Icon(
                       Icons.person_outline_rounded,
                       color: Colors.white70,
                     ),
                     sufixIcon: _kTextBoxEmptySuffix,
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      controller: _dateOfBirthController,
+                      readOnly: true,
+                      cursorColor: Colors.white,
+                      onTap: _pickDateOfBirth,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(
+                          Icons.calendar_today_outlined,
+                          color: Colors.white70,
+                        ),
+                        suffixIcon: _kTextBoxEmptySuffix,
+                        hintText: 'Date of Birth (YYYY-MM-DD)',
+                        filled: true,
+                        fillColor: Colors.grey.shade900,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade900,
+                            width: 2,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade900,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onTapOutside: (event) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      controller: _phoneController,
+                      cursorColor: Colors.white,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        signed: true,
+                        decimal: false,
+                      ),
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9+\s\-\(\)]'),
+                        ),
+                      ],
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(
+                          Icons.phone_outlined,
+                          color: Colors.white70,
+                        ),
+                        suffixIcon: _kTextBoxEmptySuffix,
+                        hintText: 'e.g. +961 3 123 456',
+                        filled: true,
+                        fillColor: Colors.grey.shade900,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade900,
+                            width: 2,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade900,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onTapOutside: (event) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                      },
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextBoxField(
