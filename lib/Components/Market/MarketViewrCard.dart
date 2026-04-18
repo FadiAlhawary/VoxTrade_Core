@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
-import 'package:voxtrade_core/routes/Routes.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 
 class MarketChartTile extends StatelessWidget {
   final String symbol;

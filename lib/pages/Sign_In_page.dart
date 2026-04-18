@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
-import 'package:voxtrade_core/pages/Sign_Up_page.dart';
+import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 
 import '../assembler/common/enum.dart';
 
@@ -60,14 +60,17 @@ class _SignInPageState extends State<SignInPage> {
       _isLoading = true;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    final userController = Get.find<UserController>();
+    final ok = await userController.loginFunction(email, password);
 
     if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
 
-    Get.offAll(() => const AppShell());
+    if (ok) {
+      Get.offAllNamed(RouteStrings.root);
+    }
   }
 
   @override
@@ -96,7 +99,6 @@ class _SignInPageState extends State<SignInPage> {
                     'Welcome Back',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -105,14 +107,13 @@ class _SignInPageState extends State<SignInPage> {
                     'Sign in to continue trading with VoxTrade.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
                     ),
                   ),
                   const SizedBox(height: 28),
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(),
                     decoration: _inputDecoration(
                       context: context,
                       label: 'Email',
@@ -123,7 +124,7 @@ class _SignInPageState extends State<SignInPage> {
                   TextField(
                     controller: _passwordController,
                     obscureText: _hidePassword,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(),
                     decoration: _inputDecoration(
                       context: context,
                       label: 'Password',
@@ -151,7 +152,6 @@ class _SignInPageState extends State<SignInPage> {
                       onPressed: _isLoading ? null : _onLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primary,
-                        foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -164,9 +164,6 @@ class _SignInPageState extends State<SignInPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
                               ),
                             )
                           : const Text(
@@ -184,10 +181,10 @@ class _SignInPageState extends State<SignInPage> {
                     children: [
                       const Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(),
                       ),
                       GestureDetector(
-                        onTap: () => Get.to(() => const SignUpPage()),
+                        onTap: () => Get.toNamed(RouteStrings.signUp),
                         child: Text(
                           'Sign Up',
                           style: TextStyle(
@@ -216,8 +213,8 @@ InputDecoration _inputDecoration({
   final ColorScheme colors = Theme.of(context).colorScheme;
   return InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: Colors.white70),
-    prefixIcon: Icon(icon, color: Colors.white70),
+    labelStyle: const TextStyle(),
+    prefixIcon: Icon(icon, ),
     filled: true,
     fillColor: Colors.white.withOpacity(0.06),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),

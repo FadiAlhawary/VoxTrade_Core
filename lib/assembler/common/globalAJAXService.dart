@@ -19,3 +19,11 @@ Future<T> sendHttpRequest<T>(String url, {Map<String, dynamic>? param , required
   return fromJson(response.data);
 
 }
+
+Future<T> sendHttpPostRequest<T>(String url,
+    {Map<String, dynamic>? body, required T Function(dynamic json) fromJson}) async {
+  Response response;
+  response = await dio.post("${ENV.apiBaseUrl}${url}", data: body);
+
+  return fromJson(response.data);
+}

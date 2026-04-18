@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
-import 'package:voxtrade_core/pages/Sign_In_page.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 
 import '../assembler/common/enum.dart';
 
@@ -83,7 +83,7 @@ class _SignUpPageState extends State<SignUpPage> {
       title: 'Success',
       status: SnackBarCompStatus.success,
     );
-    Get.off(() => const SignInPage());
+    Get.offNamed(RouteStrings.signIn);
   }
 
   @override
@@ -213,7 +213,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       GestureDetector(
-                        onTap: () => Get.off(() => const SignInPage()),
+                        onTap: () => Get.offNamed(RouteStrings.signIn),
                         child: Text(
                           'Sign In',
                           style: TextStyle(
