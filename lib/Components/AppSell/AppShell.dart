@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
+import 'package:voxtrade_core/pages/Wallet.dart';
+import 'package:voxtrade_core/pages/Trade_Page.dart';
 
 import '../../assembler/Controller/NavBarController.dart';
 import '../../pages/Markets.dart';
@@ -21,7 +23,7 @@ class AppShell extends StatelessWidget {
 
           body: IndexedStack(
             index: conroller.tabIndex,
-            children: [HomePage(), Markets()],
+            children: [HomePage(), Markets(), const SizedBox(), TradePage(), WalletPage()],
           ),
           bottomNavigationBar: BottomNavigationBar(
             selectedFontSize: 15,
