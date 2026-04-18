@@ -1,142 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Models/wallet_activity_models.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
+import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 
-import 'package:voxtrade_core/pages/Wallet_History_Page.dart';
-
-/// Fintech-style canvas (Revolut / Stripe adjacent).
-const Color _kPageBackground = Color(0xFFF5F7FA);
-const Color _kCardWhite = Color(0xFFFFFFFF);
-const Color _kBorderSubtle = Color(0xFFE2E8F0);
-const Color _kLabelMuted = Color(0xFF64748B);
-
-/// Hero gradient — blue tones (works in light mode; independent of theme primary).
-const List<Color> _kHeroGradientColors = [
-  Color(0xFF1E3A8A),
-  Color(0xFF2563EB),
-  Color(0xFF3B82F6),
-];
-
-// —————————————————————————————————————————————————————————————————————
-// Wallet activity (preview)
-// —————————————————————————————————————————————————————————————————————
-
-enum WalletActivityKind { deposit, withdrawal, transfer }
-
-extension WalletActivityKindX on WalletActivityKind {
-  String get title => switch (this) {
-        WalletActivityKind.deposit => 'Deposit',
-        WalletActivityKind.withdrawal => 'Withdrawal',
-        WalletActivityKind.transfer => 'Transfer',
-      };
-
-  IconData get icon => switch (this) {
-        WalletActivityKind.deposit => Icons.south_west_rounded,
-        WalletActivityKind.withdrawal => Icons.north_east_rounded,
-        WalletActivityKind.transfer => Icons.swap_horiz_rounded,
-      };
-}
-
-class WalletActivityTransaction {
-  const WalletActivityTransaction({
-    required this.kind,
-    required this.occurredAt,
-    required this.signedAmount,
-  });
-
-  final WalletActivityKind kind;
-  final DateTime occurredAt;
-  /// Positive = money in, negative = money out.
-  final double signedAmount;
-
-  String get displayTitle => kind.title;
-}
-
-String _formatWalletActivityDate(DateTime d) {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+/// Hero gradient — blue tones; [Brightness.dark] uses deeper blues on dark surfaces.
+List<Color> _walletHeroGradientColors(Brightness brightness) {
+  if (brightness == Brightness.dark) {
+    return const [
+      Color(0xFF0C1222),
+      Color(0xFF1E3A8A),
+      Color(0xFF1D4ED8),
+    ];
+  }
+  return const [
+    Color(0xFF1E3A8A),
+    Color(0xFF2563EB),
+    Color(0xFF3B82F6),
   ];
-  return '${months[d.month - 1]} ${d.day}, ${d.year}';
-}
-
-class WalletController extends GetxController {
-  var totalBalance = 14250.75.obs;
-  var availableToTrade = 13800.00.obs;
-  var reservedInOrders = 450.75.obs;
-
-  final recentWalletActivity = <WalletActivityTransaction>[].obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-    recentWalletActivity.assignAll(_demoWalletActivity);
-  }
-
-  /// Set to an empty list to show the empty state in the UI.
-  static final _demoWalletActivity = <WalletActivityTransaction>[
-    WalletActivityTransaction(
-      kind: WalletActivityKind.deposit,
-      occurredAt: DateTime.now().subtract(const Duration(hours: 5)),
-      signedAmount: 500.00,
-    ),
-    WalletActivityTransaction(
-      kind: WalletActivityKind.withdrawal,
-      occurredAt: DateTime.now().subtract(const Duration(days: 1)),
-      signedAmount: -120.00,
-    ),
-    WalletActivityTransaction(
-      kind: WalletActivityKind.transfer,
-      occurredAt: DateTime.now().subtract(const Duration(days: 2)),
-      signedAmount: -75.50,
-    ),
-    WalletActivityTransaction(
-      kind: WalletActivityKind.deposit,
-      occurredAt: DateTime.now().subtract(const Duration(days: 4)),
-      signedAmount: 2500.00,
-    ),
-    WalletActivityTransaction(
-      kind: WalletActivityKind.transfer,
-      occurredAt: DateTime.now().subtract(const Duration(days: 6)),
-      signedAmount: 200.00,
-    ),
-  ];
-
-  void openFullWalletHistory() {
-    Get.to(() => const WalletHistoryPage());
-  }
-
-  Future<void> addPaymentMethod() async {
-    Get.snackbar(
-      'Add Payment Method',
-      'Payment method flow will open here.',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
-  }
-
-  Future<void> viewOrderHistory() async {
-    Get.snackbar(
-      'Orders History',
-      'Orders history screen will open here.',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
-  }
-
-  Future<void> viewTradeHistory() async {
-    Get.snackbar(
-      'Trade History',
-      'Trade history screen will open here.',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
-  }
 }
 
 class WalletPage extends StatelessWidget {
   WalletPage({super.key});
-
-  final WalletController controller = Get.put(WalletController());
 
   static const double _sectionGap = 28;
   static const double _radiusCard = 20;
@@ -145,210 +30,223 @@ class WalletPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
+    final walletController = Get.find<WalletController>();
+    final themeController = Get.find<ThemeController>();
 
-    return Scaffold(
-      backgroundColor: _kPageBackground,
-      appBar: AppBar(
-        title: Text(
-          'Wallet',
-          style: textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F172A),
-            letterSpacing: -0.3,
+    return Obx(() {
+      themeController.isDarkMode.value;
+      final theme = Theme.of(context);
+      final colorScheme = theme.colorScheme;
+      final textTheme = theme.textTheme;
+      final heroColors = _walletHeroGradientColors(theme.brightness);
+
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        appBar: AppBar(
+          title: Text(
+            'Wallet',
+            style: textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+              letterSpacing: -0.3,
+            ),
           ),
+          centerTitle: false,
+          backgroundColor: colorScheme.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: colorScheme.onSurface,
         ),
-        centerTitle: false,
-        backgroundColor: _kPageBackground,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: const Color(0xFF0F172A),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SectionTitle(
-                text: 'Overview',
-                textTheme: textTheme,
-              ),
-              const SizedBox(height: 16),
-              _BalanceHeroCard(
-                balance: controller.totalBalance,
-              ),
-              const SizedBox(height: _sectionGap),
-              Obx(
-                () => IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MetricTile(
-                        colorScheme: colorScheme,
-                        textTheme: textTheme,
-                        icon: Icons.account_balance_outlined,
-                        label: 'Available',
-                        value:
-                            '\$${controller.availableToTrade.value.toStringAsFixed(2)}',
-                        radius: _radiusMetric,
-                      ),
-                      const SizedBox(width: 14),
-                      _MetricTile(
-                        colorScheme: colorScheme,
-                        textTheme: textTheme,
-                        icon: Icons.pending_actions_outlined,
-                        label: 'In orders',
-                        value:
-                            '\$${controller.reservedInOrders.value.toStringAsFixed(2)}',
-                        radius: _radiusMetric,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: _sectionGap),
-              _SectionTitle(
-                text: 'Funding',
-                textTheme: textTheme,
-              ),
-              const SizedBox(height: 16),
-              _WhiteElevatedCard(
-                radius: _radiusCard,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _IconBadge(
-                            colorScheme: colorScheme,
-                            icon: Icons.account_balance_wallet_outlined,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Payment methods',
-                                  style: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0F172A),
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Link a bank account or card to move money in and out.',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: _kLabelMuted,
-                                    height: 1.45,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _GradientPillButton(
-                        height: 54,
-                        radius: _radiusPill,
-                        onPressed: () => controller.addPaymentMethod(),
-                        icon: Icons.add_card_rounded,
-                        label: 'Add payment method',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: _sectionGap),
-              _SectionTitle(
-                text: 'Recent activity',
-                textTheme: textTheme,
-              ),
-              const SizedBox(height: 16),
-              Obx(
-                () => _RecentActivityCard(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionTitle(
+                  text: 'Overview',
                   colorScheme: colorScheme,
                   textTheme: textTheme,
-                  cardRadius: _radiusCard,
-                  transactions: controller.recentWalletActivity.take(5).toList(),
-                  onSeeAll: controller.openFullWalletHistory,
                 ),
-              ),
-              const SizedBox(height: _sectionGap),
-              _SectionTitle(
-                text: 'History',
-                textTheme: textTheme,
-              ),
-              const SizedBox(height: 16),
-              _WhiteElevatedCard(
-                radius: _radiusCard,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Statements & activity',
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF0F172A),
-                          letterSpacing: -0.2,
+                const SizedBox(height: 16),
+                _BalanceHeroCard(
+                  balance: walletController.totalBalance,
+                  gradientColors: heroColors,
+                ),
+                const SizedBox(height: _sectionGap),
+                Obx(
+                  () => IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _MetricTile(
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                          icon: Icons.account_balance_outlined,
+                          label: 'Available',
+                          value:
+                              '\$${walletController.availableToTrade.value.toStringAsFixed(2)}',
+                          radius: _radiusMetric,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Review orders and fills across your accounts.',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: _kLabelMuted,
-                          height: 1.45,
-                          fontSize: 14,
+                        const SizedBox(width: 14),
+                        _MetricTile(
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                          icon: Icons.pending_actions_outlined,
+                          label: 'In orders',
+                          value:
+                              '\$${walletController.reservedInOrders.value.toStringAsFixed(2)}',
+                          radius: _radiusMetric,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _OutlinePillButton(
-                              height: 52,
-                              radius: _radiusPill,
-                              colorScheme: colorScheme,
-                              onPressed: () => controller.viewOrderHistory(),
-                              icon: Icons.receipt_long_rounded,
-                              label: 'Orders history',
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _OutlinePillButton(
-                              height: 52,
-                              radius: _radiusPill,
-                              colorScheme: colorScheme,
-                              onPressed: () => controller.viewTradeHistory(),
-                              icon: Icons.candlestick_chart_rounded,
-                              label: 'Trade history',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: _sectionGap),
+                _SectionTitle(
+                  text: 'Funding',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+                const SizedBox(height: 16),
+                _WhiteElevatedCard(
+                  radius: _radiusCard,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _IconBadge(
+                              colorScheme: colorScheme,
+                              icon: Icons.account_balance_wallet_outlined,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Payment methods',
+                                    style: textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: colorScheme.onSurface,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Link a bank account or card to move money in and out.',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      height: 1.45,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _GradientPillButton(
+                          height: 54,
+                          radius: _radiusPill,
+                          onPressed: walletController.addPaymentMethod,
+                          icon: Icons.add_card_rounded,
+                          label: 'Add payment method',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: _sectionGap),
+                _SectionTitle(
+                  text: 'Recent activity',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+                const SizedBox(height: 16),
+                Obx(
+                  () => _RecentActivityCard(
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    cardRadius: _radiusCard,
+                    transactions:
+                        walletController.recentWalletActivity.take(5).toList(),
+                    onSeeAll: walletController.openFullWalletHistory,
+                  ),
+                ),
+                const SizedBox(height: _sectionGap),
+                _SectionTitle(
+                  text: 'History',
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                ),
+                const SizedBox(height: 16),
+                _WhiteElevatedCard(
+                  radius: _radiusCard,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Statements & activity',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Review orders and fills across your accounts.',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.45,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _OutlinePillButton(
+                                height: 52,
+                                radius: _radiusPill,
+                                colorScheme: colorScheme,
+                                onPressed: walletController.viewOrderHistory,
+                                icon: Icons.receipt_long_rounded,
+                                label: 'Orders history',
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _OutlinePillButton(
+                                height: 52,
+                                radius: _radiusPill,
+                                colorScheme: colorScheme,
+                                onPressed: walletController.viewTradeHistory,
+                                icon: Icons.candlestick_chart_rounded,
+                                label: 'Trade history',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -392,7 +290,7 @@ class _RecentActivityCard extends StatelessWidget {
                   thickness: 1,
                   indent: 52,
                   endIndent: 0,
-                  color: _kBorderSubtle.withValues(alpha: 0.7),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.7),
                 ),
                 itemBuilder: (context, index) {
                   return WalletTransactionItem(
@@ -433,6 +331,7 @@ class _RecentActivityEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 28),
@@ -441,14 +340,14 @@ class _RecentActivityEmpty extends StatelessWidget {
           Icon(
             Icons.account_balance_wallet_outlined,
             size: 44,
-            color: _kLabelMuted.withValues(alpha: 0.45),
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
           ),
           const SizedBox(height: 14),
           Text(
             'No transactions yet',
             style: textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: _kLabelMuted,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -506,14 +405,14 @@ class WalletTransactionItem extends StatelessWidget {
                   transaction.displayTitle,
                   style: textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0F172A),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _formatWalletActivityDate(transaction.occurredAt),
+                  formatWalletActivityDate(transaction.occurredAt),
                   style: textTheme.bodySmall?.copyWith(
-                    color: _kLabelMuted,
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
@@ -542,10 +441,12 @@ class WalletTransactionItem extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({
     required this.text,
+    required this.colorScheme,
     required this.textTheme,
   });
 
   final String text;
+  final ColorScheme colorScheme;
   final TextTheme textTheme;
 
   @override
@@ -554,7 +455,7 @@ class _SectionTitle extends StatelessWidget {
       text.toUpperCase(),
       style: textTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.w800,
-        color: _kLabelMuted,
+        color: colorScheme.onSurfaceVariant,
         letterSpacing: 1.0,
         fontSize: 12,
       ),
@@ -569,30 +470,34 @@ class _SectionTitle extends StatelessWidget {
 class _BalanceHeroCard extends StatelessWidget {
   const _BalanceHeroCard({
     required this.balance,
+    required this.gradientColors,
   });
 
-  final Rx<double> balance;
+  final RxDouble balance;
+  final List<Color> gradientColors;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 28, 28, 26),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: _kHeroGradientColors,
+        gradient: LinearGradient(
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+            color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.22 : 0.35),
             blurRadius: 28,
             offset: const Offset(0, 14),
             spreadRadius: -4,
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -685,7 +590,7 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final amountStyle = textTheme.titleLarge?.copyWith(
       fontWeight: FontWeight.w800,
-      color: const Color(0xFF0F172A),
+      color: colorScheme.onSurface,
       fontSize: 20,
       height: 1.15,
       letterSpacing: -0.3,
@@ -696,15 +601,19 @@ class _MetricTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _kCardWhite,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
-            color: _kBorderSubtle,
+            color: colorScheme.outlineVariant,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.045),
+              color: Colors.black.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.35
+                    : 0.045,
+              ),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
@@ -737,7 +646,7 @@ class _MetricTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.labelMedium?.copyWith(
-                      color: _kLabelMuted,
+                      color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                       letterSpacing: 0.2,
@@ -781,14 +690,17 @@ class _WhiteElevatedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: _kCardWhite,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _kBorderSubtle),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
             spreadRadius: -2,
@@ -916,7 +828,7 @@ class _OutlinePillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _kCardWhite,
+      color: colorScheme.surfaceContainerHighest,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radius),
