@@ -4,7 +4,9 @@ import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
 import 'package:voxtrade_core/Components/common/TextField/TextBoxField.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
+import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
 import 'package:voxtrade_core/pages/Sign_Up_page.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 import 'package:voxtrade_core/utils/auth_credentials_validation.dart';
 
 import '../assembler/common/enum.dart';
