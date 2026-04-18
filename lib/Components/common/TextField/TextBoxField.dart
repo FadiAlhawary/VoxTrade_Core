@@ -13,7 +13,7 @@ class TextBoxField extends StatefulWidget {
   final Icon? sufixIcon;
   final VoidCallback? onSufixIconClick;
   final bool isisSenstive;
-  final VoidCallback? onChange;
+  final Function(String value)? onChange;
 
   const TextBoxField({
     super.key,
@@ -44,12 +44,10 @@ class _TextBoxFieldState extends State<TextBoxField> {
     isObscureText = widget.isisSenstive;
     _controller = TextEditingController(text: widget.rxObjectName?.value);
 
-    _controller.addListener((){
-       widget.rxObjectName?.value = _controller.text;
+    _controller.addListener(() {
+      widget.rxObjectName?.value = _controller.text;
     });
-
   }
-
 
   @override
   void dispose() {
@@ -60,26 +58,30 @@ class _TextBoxFieldState extends State<TextBoxField> {
   @override
   Widget build(BuildContext context) {
     //===============styling============
-    final Color borderColor = widget.isDisabled ? Colors.red : Colors.grey.shade900;
-     Widget suffix;
-      if(widget.isisSenstive){
-         suffix = IconButton(
-           onPressed: () {
-           setState(() {
-             isObscureText = !isObscureText;
-           });
-           },
-           icon:
-           isObscureText
-               ? const Icon(Icons.visibility)
-               : const Icon(Icons.visibility_off),
-         );
-      }
-      else if(widget.onSufixIconClick != null){
-        suffix = IconButton(onPressed: widget.onSufixIconClick, icon: widget.sufixIcon!);
-      }else{
-        suffix =  widget.sufixIcon!;
-      }
+    final Color borderColor =
+        widget.isDisabled ? Colors.red : Colors.grey.shade900;
+    Widget? suffix;
+
+    if (widget.isisSenstive) {
+      suffix = IconButton(
+        onPressed: () {
+          setState(() {
+            isObscureText = !isObscureText;
+          });
+        },
+        icon:
+            isObscureText
+                ? const Icon(Icons.visibility)
+                : const Icon(Icons.visibility_off),
+      );
+    } else if (widget.onSufixIconClick != null && widget.sufixIcon != null) {
+      suffix = IconButton(
+        onPressed: widget.onSufixIconClick,
+        icon: widget.sufixIcon!,
+      );
+    } else if (widget.sufixIcon != null) {
+      suffix = widget.sufixIcon;
+    }
     OutlineInputBorder _border(Color color) {
       return OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -95,12 +97,14 @@ class _TextBoxFieldState extends State<TextBoxField> {
         cursorColor: Colors.white,
         obscureText: isObscureText,
         decoration: InputDecoration(
-
           prefixIcon:
               widget.onPreFixIconClick != null
-                  ? IconButton(onPressed: widget.onPreFixIconClick, icon: widget.preFixIcon!)
+                  ? IconButton(
+                    onPressed: widget.onPreFixIconClick,
+                    icon: widget.preFixIcon!,
+                  )
                   : widget.preFixIcon,
-          suffixIcon:suffix,
+          suffixIcon: suffix,
           hintText: widget.placeHolder,
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -118,9 +122,10 @@ class _TextBoxFieldState extends State<TextBoxField> {
         onTapOutside: (event) {
           FocusManager.instance.primaryFocus?.unfocus();
         },
-        onChanged: (value){
-         // widget.objectName.value=value;
-          widget.rxObjectName?.value=value;
+        onChanged: (value) {
+          // widget.objectName.value=value;
+          widget.rxObjectName?.value = value;
+          widget.onChange?.call(value);
         },
         //onChanged: widget.onChange != null ? widget.onChange : null,
       ),

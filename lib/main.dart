@@ -1,101 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:localstorage/localstorage.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
+import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
+import 'package:voxtrade_core/assembler/Services/market_socket_service.dart';
 import 'package:voxtrade_core/routes/Routes.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initLocalStorage(); // required before using localStorage
+  await GetStorage.init();
+  await Get.putAsync(() => MarketSocketService().init());
+  Get.put(ThemeController(), permanent: true);
+  Get.put(UserController(), permanent: true);
 
-void main() {
-  //Get.put(UIThemesController());
-  runApp(MyApp());
+  runApp(const MyApp());
 }
-class MyApp extends StatefulWidget {
+
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
- // final themeController = Get.find<UIThemesController>();
-
-  @override
-  void initState() {
-    super.initState();
-  //  themeController.loadThemes(); // purposeId
+  static ThemeData _lightTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF0A1AFF),
+        secondary: Color(0xFF00E5A0),
+        surface: Color(0xFFFFFFFF),
+        onSecondary: Colors.white,
+        onPrimary: Colors.black,
+      ),
+    );
   }
+
+  static ThemeData _darkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF5B6FFF),
+        secondary: Color(0xFF00E5A0),
+        surface: Color(0xFF0D1117),
+        onSecondary: Colors.white,
+        onPrimary: Colors.white,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-   // return Obx((){
-      //final themeList = themeController.themes.value;
-      //    if(themeList==null || themeList.isEmpty || themeList.first.style ==null)
-      //          return Loader();
+    final themeController = Get.find<ThemeController>();
 
-     // final style = themeList.first.style!;
-      return GetMaterialApp(
+    return Obx(
+      () => GetMaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF0A1AFF),
-            secondary: Color(0xFF00E5A0),
-            surface: Color(0xFF0D1117),
-            //background: Color(0xFF0D1117),
-            onPrimary: Colors.white,
-            onSecondary: Colors.black,
-          ),
-
-
-          // filledButtonTheme: FilledButtonThemeData(
-          //   style: FilledButton.styleFrom(
-          //     backgroundColor: Color(0xFF4988C4),
-          //     foregroundColor: Colors.white,
-          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(12),
-          //     ),
-          //     textStyle: const TextStyle(
-          //       fontWeight: FontWeight.bold,
-          //       fontSize: 16,
-          //     ),
-          //   ),
-          // ),
-          // elevatedButtonTheme: ElevatedButtonThemeData(
-          //   style: ElevatedButton.styleFrom(
-          //     backgroundColor: Color(0xFFFF0000),
-          //     foregroundColor: Colors.white,
-          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(12),
-          //     ),
-          //     textStyle: const TextStyle(
-          //       fontWeight: FontWeight.bold,
-          //       fontSize: 16,
-          //     ),
-          //   ),
-          // ),
-          // outlinedButtonTheme: OutlinedButtonThemeData(
-          //   style: ElevatedButton.styleFrom(
-          //
-          //
-          //     foregroundColor: Colors.white,
-          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(12),
-          //     ),
-          //     textStyle: const TextStyle(
-          //       fontWeight: FontWeight.bold,
-          //       fontSize: 16,
-          //     ),
-          //   ),
-          // ),
-
-        //   textTheme: const TextTheme(
-        //     bodyMedium: TextStyle(color: Colors.white),
-        //     titleLarge: TextStyle(fontWeight: FontWeight.bold),
-        //   ),
-         ),
+        theme: _lightTheme(),
+        darkTheme: _darkTheme(),
+        themeMode:
+            themeController.isDarkMode.value ? ThemeMode.dark : ThemeMode.light,
         initialRoute: RouteStrings.root,
         getPages: Routes.routes,
-      );
-   // });
+      ),
+    );
   }
 }

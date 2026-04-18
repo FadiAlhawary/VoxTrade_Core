@@ -1,41 +1,39 @@
-class Instrument {
+class InstrumentModel {
   final int id;
-  final String symbol;
-  final String name;
+  final String? symbol;
+  final String? name;
   final double? tickSize;
   final double? minQuantity;
-  final int? instrumentType;
   final int? status;
 
-  Instrument({
+  InstrumentModel({
     required this.id,
-    required this.symbol,
-    required this.name,
+    this.symbol,
+    this.name,
     this.tickSize,
     this.minQuantity,
-    this.instrumentType,
     this.status,
   });
 
-  factory Instrument.fromJson(Map<String, dynamic> json) {
-    return Instrument(
-      id: json['id'],
-      symbol: json['symbol'] ?? '',
-      name: json['name'] ?? '',
-      tickSize: (json['tick_size'] as num?)?.toDouble(),
-      minQuantity: (json['min_quantity'] as num?)?.toDouble(),
-      instrumentType: json['instrument_type'],
-      status: json['status'],
+  factory InstrumentModel.fromJson(Map<String, dynamic> json) {
+    return InstrumentModel(
+      id: json['id'] as int,
+      symbol: json['symbol'] as String?,
+      name: json['name'] as String?,
+      tickSize: (json['tickSize'] as num?)?.toDouble(),
+      minQuantity: (json['minQuantity'] as num?)?.toDouble(),
+      status: json['status'] as int?,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'symbol': symbol,
-        'name': name,
-        'tick_size': tickSize,
-        'min_quantity': minQuantity,
-        'instrument_type': instrumentType,
-        'status': status,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'symbol': symbol,
+      'name': name,
+      'tickSize': tickSize,
+      'minQuantity': minQuantity,
+      'status': status,
+    };
+  }
 }

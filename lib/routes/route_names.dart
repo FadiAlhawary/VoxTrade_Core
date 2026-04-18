@@ -1,0 +1,10 @@
+abstract class RouteStrings {
+  static const String splash = '/splash';
+  static const String root = '/';
+  static const String appShell = '/app-shell';
+  static const String signIn = '/sign-in';
+  static const String signUp = '/sign-up';
+  static const String home = '/home';
+  static const String markets = '/Markets';
+  static const String marketBuySell = '/MarketBuySell';
+}

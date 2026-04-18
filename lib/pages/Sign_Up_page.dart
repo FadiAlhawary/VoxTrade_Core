@@ -187,7 +187,7 @@ class _SignUpPageState extends State<SignUpPage> {
       title: 'Success',
       status: SnackBarCompStatus.success,
     );
-    Get.off(() => const SignInPage());
+    Get.offNamed(RouteStrings.signIn);
   }
 
   @override
@@ -359,7 +359,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       GestureDetector(
-                        onTap: () => Get.off(() => const SignInPage()),
+                        onTap: () => Get.offNamed(RouteStrings.signIn),
                         child: Text(
                           'Sign In',
                           style: TextStyle(

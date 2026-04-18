@@ -60,14 +60,17 @@ class _SignInPageState extends State<SignInPage> {
       _isLoading = true;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    final userController = Get.find<UserController>();
+    final ok = await userController.loginFunction(email, password);
 
     if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
 
-    Get.offAll(() => const AppShell());
+    if (ok) {
+      Get.offAllNamed(RouteStrings.root);
+    }
   }
 
   @override
@@ -96,7 +99,6 @@ class _SignInPageState extends State<SignInPage> {
                     'Welcome Back',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -105,7 +107,6 @@ class _SignInPageState extends State<SignInPage> {
                     'Sign in to continue trading with VoxTrade.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -145,10 +146,10 @@ class _SignInPageState extends State<SignInPage> {
                     children: [
                       const Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(),
                       ),
                       GestureDetector(
-                        onTap: () => Get.to(() => const SignUpPage()),
+                        onTap: () => Get.toNamed(RouteStrings.signUp),
                         child: Text(
                           'Sign Up',
                           style: TextStyle(
