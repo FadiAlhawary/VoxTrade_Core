@@ -14,6 +14,9 @@ final Set<String> _symbolSet = kAllowedPasswordSymbols.split('').toSet();
 
 final RegExp _asciiLetterOrDigit = RegExp(r'[a-zA-Z0-9]');
 
+/// Letters, digits, `.`, `_`, `-` only; length 3–50 (trimmed).
+final RegExp _authUsernamePattern = RegExp(r'^[a-zA-Z0-9._-]{3,50}$');
+
 bool _passwordUsesOnlyAllowedCharacters(String password) {
   for (final int r in password.runes) {
     final String ch = String.fromCharCode(r);
@@ -48,6 +51,30 @@ String? validateAuthEmail(String email) {
   }
   if (!kAllowedEmailDomains.contains(domain)) {
     return 'Please use @gmail.com.';
+  }
+  return null;
+}
+
+/// Returns `null` if valid, otherwise a short message for [SnackBarComp].
+String? validateAuthUsername(String username) {
+  final String trimmed = username.trim();
+  if (trimmed.isEmpty) {
+    return 'Please enter your username.';
+  }
+  if (trimmed.contains(RegExp(r'\s'))) {
+    return 'Username cannot contain spaces.';
+  }
+  if (!_authUsernamePattern.hasMatch(trimmed)) {
+    return 'Username must be 3–50 characters and use only letters, numbers, '
+        'period, underscore, or hyphen.';
+  }
+  return null;
+}
+
+/// Sign-in only: non-empty password (composition was enforced at registration).
+String? validateLoginPassword(String password) {
+  if (password.isEmpty) {
+    return 'Please enter your password.';
   }
   return null;
 }

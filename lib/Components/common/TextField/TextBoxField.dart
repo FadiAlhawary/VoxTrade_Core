@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 
 class TextBoxField extends StatefulWidget {
   final bool isDisabled;
@@ -57,6 +58,8 @@ class _TextBoxFieldState extends State<TextBoxField> {
 
   @override
   Widget build(BuildContext context) {
+    final themeController = Get.find<ThemeController>();
+    final isDarkMode = themeController.isDarkMode.value;
     //===============styling============
     final Color borderColor =
         widget.isDisabled ? Colors.red : Colors.grey.shade900;
@@ -94,7 +97,7 @@ class _TextBoxFieldState extends State<TextBoxField> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextField(
         controller: widget.objectName,
-        cursorColor: Colors.white,
+        cursorColor: isDarkMode ? Colors.white : Colors.black,
         obscureText: isObscureText,
         decoration: InputDecoration(
           prefixIcon:
@@ -114,7 +117,7 @@ class _TextBoxFieldState extends State<TextBoxField> {
           errorText: widget.errorText,
           //errorStyle: ,
           filled: true,
-          fillColor: Colors.grey.shade900,
+          fillColor: isDarkMode ? Colors.grey.shade900 : Colors.white,
           enabledBorder: _border(borderColor),
           focusedBorder: _border(borderColor),
         ),

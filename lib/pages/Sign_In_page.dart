@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
 import 'package:voxtrade_core/Components/common/TextField/TextBoxField.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
-import 'package:voxtrade_core/pages/Sign_Up_page.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 import 'package:voxtrade_core/utils/auth_credentials_validation.dart';
 
 import '../assembler/common/enum.dart';
 
 /// Invisible placeholder — [TextBoxField] requires a non-null [sufixIcon] when the field is not sensitive.
-const Icon _kTextBoxEmptySuffix =
-    Icon(Icons.circle, size: 0, color: Colors.transparent);
+const Icon _kTextBoxEmptySuffix = Icon(
+  Icons.circle,
+  size: 0,
+  color: Colors.transparent,
+);
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -23,33 +24,40 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPageState extends State<SignInPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _userNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  RxString _userNameErrorMessage = ''.obs;
+  RxString _passwordErrorMessage = ''.obs;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _userNameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _onLogin() async {
-    final String email = _emailController.text.trim();
+    _userNameErrorMessage.value = '';
+    _passwordErrorMessage.value = '';
+
+    final String userName = _userNameController.text.trim();
     final String password = _passwordController.text;
 
-    final String? emailError = validateAuthEmail(email);
-    if (emailError != null) {
+    final String? userNameError = validateAuthUsername(userName);
+    if (userNameError != null) {
+      _userNameErrorMessage.value = userNameError;
       SnackBarComp.show(
-        emailError,
+        userNameError,
         title: 'Validation Error',
         status: SnackBarCompStatus.warning,
       );
       return;
     }
 
-    final String? passwordError = validateAuthPassword(password);
+    final String? passwordError = validateLoginPassword(password);
     if (passwordError != null) {
+      _passwordErrorMessage.value = passwordError;
       SnackBarComp.show(
         passwordError,
         title: 'Validation Error',
@@ -63,7 +71,7 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     final userController = Get.find<UserController>();
-    final ok = await userController.loginFunction(email, password);
+    final ok = await userController.loginFunction(userName, password);
 
     if (!mounted) return;
     setState(() {
@@ -91,11 +99,7 @@ class _SignInPageState extends State<SignInPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.candlestick_chart_rounded,
-                    size: 62,
-                    color: colors.secondary,
-                  ),
+                  Icon(Icons.candlestick_chart_rounded, size: 62),
                   const SizedBox(height: 14),
                   Text(
                     'Welcome Back',
@@ -108,29 +112,34 @@ class _SignInPageState extends State<SignInPage> {
                   Text(
                     'Sign in to continue trading with VoxTrade.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(),
                   ),
                   const SizedBox(height: 28),
-                  TextBoxField(
-                    placeHolder: 'Email',
-                    objectName: _emailController,
-                    preFixIcon: const Icon(
-                      Icons.email_outlined,
-                      color: Colors.white70,
-                    ),
-                    sufixIcon: _kTextBoxEmptySuffix,
-                  ),
+                  Obx(() {
+                    return TextBoxField(
+                      placeHolder: 'UserName',
+                      objectName: _userNameController,
+                      preFixIcon: const Icon(Icons.person_outline_rounded),
+                      sufixIcon: _kTextBoxEmptySuffix,
+                      errorText:
+                          _userNameErrorMessage.value.isNotEmpty
+                              ? _userNameErrorMessage.value
+                              : null,
+                    );
+                  }),
                   const SizedBox(height: 16),
-                  TextBoxField(
-                    placeHolder: 'Password',
-                    objectName: _passwordController,
-                    isisSenstive: true,
-                    preFixIcon: const Icon(
-                      Icons.lock_outline_rounded,
-                      color: Colors.white70,
-                    ),
-                  ),
+                  Obx(() {
+                    return TextBoxField(
+                      placeHolder: 'Password',
+                      objectName: _passwordController,
+                      isisSenstive: true,
+                      preFixIcon: const Icon(Icons.lock_outline_rounded),
+                      errorText:
+                          _passwordErrorMessage.value.isNotEmpty
+                              ? _passwordErrorMessage.value
+                              : null,
+                    );
+                  }),
                   const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
@@ -146,10 +155,7 @@ class _SignInPageState extends State<SignInPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        "Don't have an account? ",
-                        style: TextStyle(),
-                      ),
+                      const Text("Don't have an account? ", style: TextStyle()),
                       GestureDetector(
                         onTap: () => Get.toNamed(RouteStrings.signUp),
                         child: Text(
