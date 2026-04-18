@@ -1,3 +1,4 @@
+import 'package:voxtrade_core/Components/ModelDto/AuthResponseDTO.dart';
 import 'package:voxtrade_core/Components/ModelDto/LookupItemDto.dart';
 import 'package:voxtrade_core/Components/ModelDto/OrderHistoryDTO.dart';
 import 'package:voxtrade_core/assembler/common/globalAJAXService.dart';
@@ -10,6 +11,18 @@ Future<List<OrderHistory>> getTradeHistory(int userId, bool activeOnly) {
       final list = json as List;
       return list.map((e) => OrderHistory.fromJson(e)).toList();
     },
+  );
+}
+
+/// Backend should return `{ "success": bool, "message": string, ... }` (same shape as login).
+Future<AuthResponseDTO> cancelOrder(int orderId, int userId) {
+  return sendHttpRequest<AuthResponseDTO>(
+    "/api/History/CancelOrder",
+    param: {'orderId': orderId, 'userId': userId},
+    fromJson: (json) => AuthResponseDTO.fromJson(
+      Map<String, dynamic>.from(json as Map),
+    ),
+    method: "PUT",
   );
 }
 
