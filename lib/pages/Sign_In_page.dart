@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
+import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
+import 'package:voxtrade_core/Components/common/TextField/TextBoxField.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
-import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
-import 'package:voxtrade_core/routes/route_names.dart';
+import 'package:voxtrade_core/pages/Sign_Up_page.dart';
+import 'package:voxtrade_core/utils/auth_credentials_validation.dart';
 
 import '../assembler/common/enum.dart';
+
+/// Invisible placeholder — [TextBoxField] requires a non-null [sufixIcon] when the field is not sensitive.
+const Icon _kTextBoxEmptySuffix =
+    Icon(Icons.circle, size: 0, color: Colors.transparent);
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -16,7 +23,6 @@ class SignInPage extends StatefulWidget {
 class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _hidePassword = true;
   bool _isLoading = false;
 
   @override
@@ -26,30 +32,24 @@ class _SignInPageState extends State<SignInPage> {
     super.dispose();
   }
 
-  bool _isValidEmail(String email) {
-    if (!email.contains('@')) return false;
-    final List<String> parts = email.split('@');
-    if (parts.length != 2) return false;
-    if (parts.first.trim().isEmpty || parts.last.trim().isEmpty) return false;
-    return parts.last.contains('.');
-  }
-
   Future<void> _onLogin() async {
     final String email = _emailController.text.trim();
-    final String password = _passwordController.text.trim();
+    final String password = _passwordController.text;
 
-    if (!_isValidEmail(email)) {
+    final String? emailError = validateAuthEmail(email);
+    if (emailError != null) {
       SnackBarComp.show(
-        'Please enter a valid email address.',
+        emailError,
         title: 'Validation Error',
         status: SnackBarCompStatus.warning,
       );
       return;
     }
 
-    if (password.length < 8) {
+    final String? passwordError = validateAuthPassword(password);
+    if (passwordError != null) {
       SnackBarComp.show(
-        'Password must be at least 8 characters long.',
+        passwordError,
         title: 'Validation Error',
         status: SnackBarCompStatus.warning,
       );
@@ -110,69 +110,34 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 28),
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(),
-                    decoration: _inputDecoration(
-                      context: context,
-                      label: 'Email',
-                      icon: Icons.email_outlined,
+                  TextBoxField(
+                    placeHolder: 'Email',
+                    objectName: _emailController,
+                    preFixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: Colors.white70,
                     ),
+                    sufixIcon: _kTextBoxEmptySuffix,
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _hidePassword,
-                    style: const TextStyle(),
-                    decoration: _inputDecoration(
-                      context: context,
-                      label: 'Password',
-                      icon: Icons.lock_outline_rounded,
-                    ).copyWith(
-                      suffixIcon: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _hidePassword = !_hidePassword;
-                          });
-                        },
-                        icon: Icon(
-                          _hidePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: Colors.white70,
-                        ),
-                      ),
+                  TextBoxField(
+                    placeHolder: 'Password',
+                    objectName: _passwordController,
+                    isisSenstive: true,
+                    preFixIcon: const Icon(
+                      Icons.lock_outline_rounded,
+                      color: Colors.white70,
                     ),
                   ),
                   const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _onLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                              ),
-                            )
-                          : const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
-                            ),
+                    child: Button(
+                      purpose: ButtonPurpose.primary,
+                      isLoading: _isLoading,
+                      label: 'Sign In',
+                      onPress: _onLogin,
+                      backGroundColor: colors.primary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -203,32 +168,4 @@ class _SignInPageState extends State<SignInPage> {
       ),
     );
   }
-}
-
-InputDecoration _inputDecoration({
-  required BuildContext context,
-  required String label,
-  required IconData icon,
-}) {
-  final ColorScheme colors = Theme.of(context).colorScheme;
-  return InputDecoration(
-    labelText: label,
-    labelStyle: const TextStyle(),
-    prefixIcon: Icon(icon, ),
-    filled: true,
-    fillColor: Colors.white.withOpacity(0.06),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colors.primary.withOpacity(0.2)),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colors.primary.withOpacity(0.2)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colors.secondary, width: 1.2),
-    ),
-  );
 }
