@@ -1,3 +1,43 @@
+int _orderInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString()) ?? 0;
+}
+
+int? _orderNullableInt(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString());
+}
+
+String _orderString(dynamic v) {
+  if (v == null) return '';
+  return v.toString();
+}
+
+DateTime _orderDateTime(dynamic v) {
+  if (v == null) {
+    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }
+  if (v is DateTime) return v;
+  final parsed = DateTime.tryParse(v.toString());
+  return parsed ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+}
+
+DateTime? _orderDateTimeNullable(dynamic v) {
+  if (v == null) return null;
+  if (v is DateTime) return v;
+  return DateTime.tryParse(v.toString());
+}
+
+num _orderNum(dynamic v) {
+  if (v == null) return 0;
+  if (v is num) return v;
+  return num.tryParse(v.toString()) ?? 0;
+}
+
 class OrderHistory {
   final int id;
   final int? userId;
@@ -30,6 +70,12 @@ class OrderHistory {
 
   final bool canCancel;
 
+  /// True when [status] indicates a pending order (case-insensitive).
+  bool get isPendingStatus {
+    final s = status.toLowerCase().trim();
+    return s.contains('pending');
+  }
+
   OrderHistory({
     required this.id,
     this.userId,
@@ -58,35 +104,43 @@ class OrderHistory {
 
   factory OrderHistory.fromJson(Map<String, dynamic> json) {
     return OrderHistory(
-      id: json['id'],
-      userId: json['user_id'],
-      instrumentId: json['instrument_id'],
-      symbol: json['symbol'] ?? '',
-      instrumentName: json['instrument_name'] ?? '',
-      orderTypeId: json['order_type_id'],
-      orderType: json['order_type'] ?? '',
-      actionTypeId: json['action_type_id'],
-      actionType: json['action_type'] ?? '',
-      statusId: json['status_id'],
-      status: json['status'] ?? '',
-      quantity: json['quantity'],
-      filledQuantity: json['filled_quantity'] ?? 0,
-      remainingQuantity: json['remaining_quantity'],
-      price: json['price'],
-      limitPrice: json['limit_price'],
-      stopPrice: json['stop_price'],
-      executionPrice: json['execution_price'],
-      averageFillPrice: json['average_fill_price'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt:
-          json['updated_at'] != null
-              ? DateTime.parse(json['updated_at'])
-              : null,
-      cancelledAt:
-          json['cancelled_at'] != null
-              ? DateTime.parse(json['cancelled_at'])
-              : null,
-      canCancel: json['can_cancel'] ?? false,
+      id: _orderInt(json['id'] ?? json['Id']),
+      userId: _orderNullableInt(json['user_id'] ?? json['userId'] ?? json['UserId']),
+      instrumentId: _orderNullableInt(
+        json['instrument_id'] ?? json['instrumentId'] ?? json['InstrumentId'],
+      ),
+      symbol: _orderString(json['symbol'] ?? json['Symbol']),
+      instrumentName: _orderString(
+        json['instrument_name'] ??
+            json['instrumentName'] ??
+            json['InstrumentName'],
+      ),
+      orderTypeId: _orderInt(json['order_type_id'] ?? json['orderTypeId'] ?? json['OrderTypeId']),
+      orderType: _orderString(json['order_type'] ?? json['orderType'] ?? json['OrderType']),
+      actionTypeId: _orderInt(json['action_type_id'] ?? json['actionTypeId'] ?? json['ActionTypeId']),
+      actionType: _orderString(json['action_type'] ?? json['actionType'] ?? json['ActionType']),
+      statusId: _orderInt(json['status_id'] ?? json['statusId'] ?? json['StatusId']),
+      status: _orderString(json['status'] ?? json['Status']),
+      quantity: json['quantity'] ?? json['Quantity'],
+      filledQuantity: _orderNum(
+        json['filled_quantity'] ?? json['filledQuantity'] ?? json['FilledQuantity'],
+      ),
+      remainingQuantity: json['remaining_quantity'] ?? json['remainingQuantity'],
+      price: json['price'] ?? json['Price'],
+      limitPrice: json['limit_price'] ?? json['limitPrice'],
+      stopPrice: json['stop_price'] ?? json['stopPrice'],
+      executionPrice: json['execution_price'] ?? json['executionPrice'],
+      averageFillPrice: json['average_fill_price'] ?? json['averageFillPrice'],
+      createdAt: _orderDateTime(
+        json['created_at'] ?? json['createdAt'] ?? json['CreatedAt'],
+      ),
+      updatedAt: _orderDateTimeNullable(
+        json['updated_at'] ?? json['updatedAt'] ?? json['UpdatedAt'],
+      ),
+      cancelledAt: _orderDateTimeNullable(
+        json['cancelled_at'] ?? json['cancelledAt'] ?? json['CancelledAt'],
+      ),
+      canCancel: json['can_cancel'] ?? json['canCancel'] ?? json['CanCancel'] ?? false,
     );
   }
 

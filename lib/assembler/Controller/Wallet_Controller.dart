@@ -5,9 +5,8 @@ import 'package:voxtrade_core/Models/wallet_activity_models.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
 import 'package:voxtrade_core/assembler/Services/Wallet_Services.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
-import 'package:voxtrade_core/pages/Orders_Page.dart';
-import 'package:voxtrade_core/pages/Trades_Page.dart';
 import 'package:voxtrade_core/pages/Wallet_History_Page.dart';
+import 'package:voxtrade_core/routes/route_names.dart';
 
 class WalletController extends GetxController {
   RxList<WalletHistoryDto> walletHistory = <WalletHistoryDto>[].obs;
@@ -83,10 +82,10 @@ class WalletController extends GetxController {
   }
 
   void viewOrderHistory() {
-    Get.to(() => const OrdersPage());
+    Get.toNamed(RouteStrings.orders);
   }
 
   void viewTradeHistory() {
-    Get.to(() => const TradesPage());
+    Get.toNamed(RouteStrings.trades);
   }
 }

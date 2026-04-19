@@ -24,14 +24,11 @@ Future<T> sendHttpRequest<T>(
     response = await dio.get("${ENV.apiBaseUrl}${url}", queryParameters: param);
   } else if (method == "POST") {
     response = await dio.post("${ENV.apiBaseUrl}${url}", data: param);
-  }
-  else if (method == "PUT") {
-    response = await dio.put("${ENV.apiBaseUrl}${url}", data: param);
-  }
-  else if (method == "DELETE") {
+  } else if (method == "PUT") {
+    response = await dio.put("${ENV.apiBaseUrl}${url}", queryParameters: param);
+  } else if (method == "DELETE") {
     response = await dio.delete("${ENV.apiBaseUrl}${url}", data: param);
-  }
-   else {
+  } else {
     throw Exception("Invalid method");
   }
 

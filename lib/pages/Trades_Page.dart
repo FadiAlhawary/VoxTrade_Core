@@ -1,86 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/Loader.dart';
 import 'package:voxtrade_core/Components/cards/trade_card.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/TradeHistoryController.dart';
 
-const Color _kTradesPageBackground = Color(0xFFF5F7FA);
-const Color _kTradesLabelMuted = Color(0xFF64748B);
-
-class TradesPage extends StatefulWidget {
+class TradesPage extends StatelessWidget {
   const TradesPage({super.key});
 
   @override
-  State<TradesPage> createState() => _TradesPageState();
-}
-
-class _TradesPageState extends State<TradesPage> {
-  late final TradeHistoryController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    debugPrint('PAGE LOADED');
-    _controller = Get.find<TradeHistoryController>();
-    _controller.fetchTrades();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final TradeHistoryController controller =
+        Get.find<TradeHistoryController>();
 
-    return Scaffold(
-      backgroundColor: _kTradesPageBackground,
-      appBar: AppBar(
-        title: Text(
-          'Trades',
-          style: textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F172A),
-            letterSpacing: -0.3,
-          ),
-        ),
-        backgroundColor: _kTradesPageBackground,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: const Color(0xFF0F172A),
-      ),
-      body: Obx(() {
-        if (_controller.isLoading.value && _controller.trades.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Obx(() {
+      Get.find<ThemeController>().isDarkMode.value;
+      final cs = Theme.of(context).colorScheme;
+      final textTheme = Theme.of(context).textTheme;
 
-        if (_controller.errorMessage.value != null &&
-            _controller.trades.isEmpty) {
-          return _ErrorState(
-            message: _controller.errorMessage.value!,
-            onRetry: _controller.fetchTrades,
-          );
-        }
+      if (controller.isLoading.value && controller.trades.isEmpty) {
+        return Scaffold(
+          backgroundColor: cs.surface,
+          appBar: _tradesAppBar(textTheme, cs),
+          body: const Loader(isCenter: true),
+        );
+      }
 
-        if (_controller.trades.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.swap_horiz_rounded,
-            message: 'No trades yet',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _controller.fetchTrades,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: _controller.trades.length,
-            itemBuilder: (context, index) {
-              return TradeCard(trade: _controller.trades[index]);
-            },
+      if (controller.errorMessage.value != null &&
+          controller.trades.isEmpty) {
+        return Scaffold(
+          backgroundColor: cs.surface,
+          appBar: _tradesAppBar(textTheme, cs),
+          body: _ErrorState(
+            message: controller.errorMessage.value!,
+            onRetry: controller.fetchTrades,
           ),
         );
-      }),
+      }
+
+      if (controller.trades.isEmpty) {
+        return Scaffold(
+          backgroundColor: cs.surface,
+          appBar: _tradesAppBar(textTheme, cs),
+          body: const _EmptyState(
+            icon: Icons.swap_horiz_rounded,
+            message: 'No trades yet',
+          ),
+        );
+      }
+
+      return Scaffold(
+        backgroundColor: cs.surface,
+        appBar: _tradesAppBar(textTheme, cs),
+        body: RefreshIndicator(
+          onRefresh: controller.fetchTrades,
+          color: cs.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 18),
+            child: TradeHistoryTable(trades: controller.trades),
+          ),
+        ),
+      );
+    });
+  }
+
+  static PreferredSizeWidget _tradesAppBar(TextTheme textTheme, ColorScheme cs) {
+    return AppBar(
+      title: Text(
+        'Trades',
+        style: textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: cs.onSurface,
+          letterSpacing: -0.3,
+        ),
+      ),
+      backgroundColor: cs.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      foregroundColor: cs.onSurface,
     );
   }
 }
@@ -94,6 +92,9 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final muted = cs.onSurfaceVariant;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -103,14 +104,14 @@ class _EmptyState extends StatelessWidget {
             Icon(
               icon,
               size: 56,
-              color: _kTradesLabelMuted.withValues(alpha: 0.5),
+              color: muted.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge?.copyWith(
-                color: _kTradesLabelMuted,
+                color: muted,
                 height: 1.4,
                 fontWeight: FontWeight.w500,
               ),
@@ -131,6 +132,8 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -140,14 +143,14 @@ class _ErrorState extends StatelessWidget {
             Icon(
               Icons.cloud_off_outlined,
               size: 56,
-              color: _kTradesLabelMuted.withValues(alpha: 0.6),
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 16),
             Text(
               'Something went wrong',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F172A),
+                color: cs.onSurface,
               ),
             ),
             const SizedBox(height: 8),
@@ -155,13 +158,17 @@ class _ErrorState extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
-                color: _kTradesLabelMuted,
+                color: cs.onSurfaceVariant,
                 height: 1.35,
               ),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: onRetry,
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.primary,
+                foregroundColor: cs.onPrimary,
+              ),
               child: const Text('Retry'),
             ),
           ],
