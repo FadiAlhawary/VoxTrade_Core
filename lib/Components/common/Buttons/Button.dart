@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/Loader.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 
 import '../../../assembler/common/enum.dart';
 
@@ -25,6 +27,10 @@ class Button extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeController = Get.find<ThemeController>();
+    final isDarkMode = themeController.isDarkMode.value;
+    final Color backgroundColor = isDarkMode ? Colors.white : Colors.black;
+    final Color foregroundColor = isDarkMode ? Colors.black : Colors.white;
     final Widget child =
         isLoading
             ? Loader(width: buttonWidth, height: buttonHeight, isCenter: false)
@@ -37,7 +43,7 @@ class Button extends StatelessWidget {
           style: FilledButton.styleFrom(
             minimumSize: Size(buttonWidth, buttonHeight),
             backgroundColor: backGroundColor,
-            foregroundColor: Colors.white,
+            foregroundColor: foregroundColor,
             padding: EdgeInsets.symmetric(
               horizontal: buttonWidth - 10,
               vertical: buttonHeight,
@@ -51,12 +57,14 @@ class Button extends StatelessWidget {
             ),
           ),
         );
+
       case ButtonPurpose.secondary:
         return OutlinedButton(
           onPressed: isLoading ? null : onPress,
           child: child,
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: foregroundColor,
+            backgroundColor: backgroundColor,
             minimumSize: Size(buttonWidth, buttonHeight),
             padding: EdgeInsets.symmetric(
               horizontal: buttonWidth - 10,
@@ -71,6 +79,7 @@ class Button extends StatelessWidget {
             ),
           ),
         );
+
       case ButtonPurpose.danger:
         return FilledButton(
           onPressed: isLoading ? null : onPress,
@@ -81,7 +90,7 @@ class Button extends StatelessWidget {
                 backGroundColor == const Color(0xFF4988C4)
                     ? Colors.red
                     : backGroundColor,
-            foregroundColor: Colors.white,
+            foregroundColor: foregroundColor,
             padding: EdgeInsets.symmetric(
               horizontal: buttonWidth - 10,
               vertical: buttonHeight,
@@ -95,6 +104,7 @@ class Button extends StatelessWidget {
             ),
           ),
         );
+
       // default:
       //   return SnackBar(content: Text("This button type is not recognized"));
     }

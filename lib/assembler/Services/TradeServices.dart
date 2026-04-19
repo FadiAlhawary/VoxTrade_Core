@@ -6,8 +6,10 @@ Future<List<TradeHistory>> getTradeHistory(int userId) {
     "/api/History/GetTradeHistory",
     param: {'userId': userId},
     fromJson: (json) {
-      final list = json as List;
-      return list.map((e) => TradeHistory.fromJson(e)).toList();
+      final list = json as List<dynamic>;
+      return list
+          .map((e) => TradeHistory.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
     },
   );
 }

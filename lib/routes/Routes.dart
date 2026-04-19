@@ -1,12 +1,16 @@
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/assembler/Bindings/AppShellBinding.dart';
+import 'package:voxtrade_core/assembler/Bindings/order_history_binding.dart';
+import 'package:voxtrade_core/assembler/Bindings/trade_history_binding.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
 import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
+import 'package:voxtrade_core/pages/Orders_Page.dart';
 import 'package:voxtrade_core/pages/Sign_In_page.dart';
 import 'package:voxtrade_core/pages/Sign_Up_page.dart';
 import 'package:voxtrade_core/pages/Markets.dart';
 import 'package:voxtrade_core/pages/Splash_page.dart';
+import 'package:voxtrade_core/pages/Trades_Page.dart';
 import 'package:voxtrade_core/routes/auth_middleware.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
@@ -37,6 +41,18 @@ class Routes {
             args is String && args.isNotEmpty ? args : 'BINANCE:BTCUSDT';
         return MarketBuySell(symbol: symbol);
       },
+    ),
+    GetPage(
+      name: RouteStrings.trades,
+      page: () => const TradesPage(),
+      binding: TradeHistoryBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: RouteStrings.orders,
+      page: () => const OrdersPage(),
+      binding: OrderHistoryBinding(),
+      middlewares: [AuthMiddleware()],
     ),
   ];
 }

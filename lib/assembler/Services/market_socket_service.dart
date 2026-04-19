@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:voxtrade_core/assembler/common/.env.dart';
@@ -45,6 +47,10 @@ class MarketSocketService extends GetxService {
   // symbol -> local subscriber count
   final Map<String, int> _localSubscriberCounts = {};
 
+  Timer? _reconnectTimer;
+
+  static const Duration _reconnectInterval = Duration(seconds: 15);
+
   Future<MarketSocketService> init() async {
     _hubConnection =
         HubConnectionBuilder()
@@ -61,7 +67,7 @@ class MarketSocketService extends GetxService {
 
     _hubConnection.onclose(({Exception? error}) {
       isConnected.value = false;
-      // print('SignalR closed: $error');
+      _scheduleReconnectIfNeeded();
     });
 
     _hubConnection.onreconnected(({String? connectionId}) async {
@@ -87,16 +93,39 @@ class MarketSocketService extends GetxService {
       }
     });
 
-    await _startConnection();
+    await _startConnectionSafe();
+    if (!isConnected.value) {
+      _scheduleReconnectIfNeeded();
+    }
 
     return this;
   }
 
-  Future<void> _startConnection() async {
-    if (_hubConnection.state == HubConnectionState.Connected) return;
+  void _scheduleReconnectIfNeeded() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(_reconnectInterval, (_) async {
+      if (isConnected.value) return;
+      await _startConnectionSafe();
+    });
+  }
 
-    await _hubConnection.start();
-    isConnected.value = true;
+  /// Does not throw — app must start even when LAN/API is unreachable or server is down.
+  Future<void> _startConnectionSafe() async {
+    if (_hubConnection.state == HubConnectionState.Connected) {
+      isConnected.value = true;
+      return;
+    }
+
+    try {
+      await _hubConnection.start();
+      isConnected.value = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    } catch (e, st) {
+      isConnected.value = false;
+      debugPrint('MarketSocketService: connect failed ($e)');
+      debugPrint('$st');
+    }
   }
 
   Stream<MarketTick> subscribeToSymbol(String symbol) {
@@ -114,7 +143,7 @@ class MarketSocketService extends GetxService {
     _localSubscriberCounts[normalized] = current + 1;
 
     if (current == 0) {
-      _invokeSubscribe(normalized);
+      scheduleMicrotask(() => _invokeSubscribe(normalized));
     }
 
     return _symbolControllers[normalized]!.stream;
@@ -133,21 +162,32 @@ class MarketSocketService extends GetxService {
   }
 
   Future<void> _invokeSubscribe(String symbol) async {
-    if (_hubConnection.state != HubConnectionState.Connected) {
-      await _startConnection();
-    }
+    try {
+      if (_hubConnection.state != HubConnectionState.Connected) {
+        await _startConnectionSafe();
+      }
+      if (_hubConnection.state != HubConnectionState.Connected) return;
 
-    await _hubConnection.invoke('SubscribeSymbol', args: [symbol]);
+      await _hubConnection.invoke('SubscribeSymbol', args: [symbol]);
+    } catch (e) {
+      debugPrint('MarketSocketService: SubscribeSymbol failed ($e)');
+    }
   }
 
   Future<void> _invokeUnsubscribe(String symbol) async {
     if (_hubConnection.state != HubConnectionState.Connected) return;
 
-    await _hubConnection.invoke('UnsubscribeSymbol', args: [symbol]);
+    try {
+      await _hubConnection.invoke('UnsubscribeSymbol', args: [symbol]);
+    } catch (e) {
+      debugPrint('MarketSocketService: UnsubscribeSymbol failed ($e)');
+    }
   }
 
   @override
   void onClose() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     for (final controller in _symbolControllers.values) {
       controller.close();
     }
