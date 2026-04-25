@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/assembler/Bindings/AppShellBinding.dart';
@@ -37,9 +38,12 @@ class Routes {
       name: RouteStrings.marketBuySell,
       page: () {
         final args = Get.arguments;
-        final symbol =
-            args is String && args.isNotEmpty ? args : 'BINANCE:BTCUSDT';
-        return MarketBuySell(symbol: symbol);
+        if (args is int) {
+          return MarketBuySell(instrumentId: args);
+        }
+        return const Scaffold(
+          body: Center(child: Text('Invalid instrument ID')),
+        );
       },
     ),
     GetPage(

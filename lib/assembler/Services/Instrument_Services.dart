@@ -2,7 +2,7 @@ import 'package:voxtrade_core/Components/ModelDto/InstrumentDTO.dart';
 import 'package:voxtrade_core/Components/ModelDto/LookupItemDto.dart';
 import 'package:voxtrade_core/assembler/common/globalAJAXService.dart';
 
-Future<List<InstrumentDTO>> getOrderStatuses({bool activeOnly = true}) {
+Future<List<InstrumentDTO>> getInstruments({bool activeOnly = true}) {
   return sendHttpRequest<List<InstrumentDTO>>(
     "/api/Instrument/GetAllInstrument",
     param: {'activeOnly': activeOnly},

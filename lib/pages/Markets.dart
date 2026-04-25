@@ -1,39 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/Market/MarketViewrCard.dart';
+import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
 
 class Markets extends StatelessWidget {
   const Markets({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // final symbols = [
-    //   "BINANCE:BTCUSDT",
-    //   "BINANCE:ETHUSDT",
-    //   "BINANCE:SOLUSDT",
-    //   "BINANCE:XRPUSDT",
-    //   'AAPL',
-    //   'MSFT',
-    //   "BINANCE:XRPUSDT",
-    //   "BINANCE:ADAUSDT",
-    //   "OANDA:EUR_USD",
-    //   "OANDA:GBP_USD",
-    //   "OANDA:USD_JPY",
-    //   "OANDA:XAU_USD",
-    // ];
-    final symbols = [
-      "BINANCE:BTCUSDT",
-      "BINANCE:ETHUSDT",
-      "BINANCE:SOLUSDT",
-      "BINANCE:XRPUSDT",
-      'AAPL',
-      'MSFT',
-      "BINANCE:XRPUSDT",
-      "BINANCE:ADAUSDT",
-      "OANDA:EUR_USD",
-      "OANDA:GBP_USD",
-      "OANDA:USD_JPY",
-      "OANDA:XAU_USD",
-    ];
+    final instrumentController = Get.find<InstrumentController>();
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -42,10 +17,13 @@ class Markets extends StatelessWidget {
         width: double.infinity,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-          itemCount: symbols.length,
+          itemCount: instrumentController.instruments.length,
           separatorBuilder: (_, __) => const MarketListDivider(),
           itemBuilder: (_, index) {
-            return MarketChartTile(symbol: symbols[index], index: index);
+            return MarketChartTile(
+              instrument: instrumentController.instruments[index],
+              index: index,
+            );
           },
         ),
       ),

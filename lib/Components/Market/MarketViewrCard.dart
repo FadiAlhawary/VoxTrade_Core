@@ -2,24 +2,25 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/ModelDto/InstrumentDTO.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
 class MarketChartTile extends StatelessWidget {
-  const MarketChartTile({super.key, required this.symbol, this.index = 0});
+  const MarketChartTile({super.key, required this.instrument, this.index = 0});
 
-  final String symbol;
+  final InstrumentDTO instrument;
   final int index;
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(MarketChartController(symbol), tag: symbol);
-    final meta = _symbolMeta(symbol);
+    final controller = Get.put(MarketChartController(instrument.symbol), tag: instrument.symbol);
+    final meta = _symbolMeta(instrument.symbol);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => Get.toNamed(RouteStrings.marketBuySell, arguments: symbol),
+        onTap: () => Get.toNamed(RouteStrings.marketBuySell, arguments: instrument.id),
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           decoration: BoxDecoration(
@@ -30,7 +31,7 @@ class MarketChartTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: GetBuilder<MarketChartController>(
-              tag: symbol,
+              tag: instrument.symbol,
               id: controller.priceUpdateId,
               builder: (controller) {
                 final candles = controller.candles;
