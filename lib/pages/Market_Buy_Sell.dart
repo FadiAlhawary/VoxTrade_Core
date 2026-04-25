@@ -31,7 +31,7 @@ class MarketBuySell extends StatelessWidget {
                     onPress: () async {
                       marketController.callPlaceOrder(
                         instrumentId,
-                        'buy',
+                        'sell',
                         'market',
                         1,
                         0,

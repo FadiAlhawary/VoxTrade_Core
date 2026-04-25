@@ -8,7 +8,9 @@ import 'package:voxtrade_core/assembler/common/enum.dart';
 
 class MarketController extends GetxController {
   final userController = Get.find<UserController>();
-  final RxList<PlaceOrderResponseDTO> orders = RxList<PlaceOrderResponseDTO>([]);
+  final RxList<PlaceOrderResponseDTO> orders = RxList<PlaceOrderResponseDTO>(
+    [],
+  );
   RxBool isLoading = false.obs;
 
   Future<void> callPlaceOrder(
@@ -50,7 +52,7 @@ class MarketController extends GetxController {
         } else {
           SnackBarComp.show(
             data.first.message,
-            title: 'Success',
+            title: side.toUpperCase(),
             status: SnackBarCompStatus.success,
           );
         }
