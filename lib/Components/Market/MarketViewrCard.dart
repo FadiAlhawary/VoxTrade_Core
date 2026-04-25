@@ -1,354 +1,260 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
 class MarketChartTile extends StatelessWidget {
-  final String symbol;
-  final int index;
-
   const MarketChartTile({super.key, required this.symbol, this.index = 0});
 
-  static Color _accent(ColorScheme scheme, int i) {
-    final accents = [scheme.primary, scheme.secondary, scheme.tertiary];
-    return accents[i % accents.length];
-  }
+  final String symbol;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(MarketChartController(symbol), tag: symbol);
-    final scheme = Theme.of(context).colorScheme;
-    final accent = _accent(scheme, index);
-    final parts = symbol.split(':');
-    final exchange = parts.length > 1 ? parts.first : '';
-    final pair = parts.length > 1 ? parts.sublist(1).join(':') : symbol;
+    final meta = _symbolMeta(symbol);
 
-    return Obx(() {
-      final hasCandles = controller.candles.isNotEmpty;
-      final high = hasCandles ? controller.candles.first.high : null;
-      final low = hasCandles ? controller.candles.first.low : null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Get.toNamed(RouteStrings.marketBuySell, arguments: symbol),
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            color: const Color(0xFF1F2C46),
+            border: Border.all(color: const Color(0xFF2C3C5D), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: GetBuilder<MarketChartController>(
+              tag: symbol,
+              id: controller.priceUpdateId,
+              builder: (controller) {
+                final candles = controller.candles;
+                final sparkline = candles
+                    .map((c) => c.close)
+                    .where((v) => v.isFinite)
+                    .toList(growable: false);
+                final lastPrice = controller.lastPrice.value;
+                final open = candles.isNotEmpty ? candles.first.open : 0.0;
+                final delta =
+                    open == 0 ? 0.0 : ((lastPrice - open) / open) * 100;
+                final isUp = delta >= 0;
+                final changeColor =
+                    isUp ? const Color(0xFF34D399) : const Color(0xFFF87171);
 
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Get.toNamed(RouteStrings.marketBuySell, arguments: symbol);
-          },
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  scheme.surfaceContainerHighest.withValues(alpha: 0.85),
-                  scheme.surface.withValues(alpha: 0.98),
-                ],
-              ),
-              border: Border.all(
-                color: accent.withValues(alpha: 0.35),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.14),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 4,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [accent, scheme.secondary],
+                return Row(
+                  children: [
+                    _LogoTile(meta: meta),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            meta.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFEFF4FF),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            meta.ticker,
+                            style: const TextStyle(
+                              color: Color(0xFF97A6C9),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 70,
+                      height: 26,
+                      child: CustomPaint(
+                        painter: _SparklinePainter(
+                          values: sparkline,
+                          strokeColor: changeColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (exchange.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: accent.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: accent.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Text(
-                                exchange,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.4,
-                                  color: accent,
-                                ),
-                              ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            color: changeColor.withValues(alpha: 0.16),
+                          ),
+                          child: Text(
+                            '${isUp ? '+' : ''}${delta.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: changeColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          pair,
-                          style: TextStyle(
-                            fontSize: 17,
+                          '\$${lastPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            color: scheme.onSurface,
+                            fontSize: 24,
+                            letterSpacing: -0.4,
+                            height: 1,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              'Last',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              controller.lastPrice.value.toStringAsFixed(2),
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5,
-                                color: scheme.primary,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _HlChip(
-                                label: 'High',
-                                value: high,
-                                icon: Icons.north_east_rounded,
-                                fg: _highFg(scheme),
-                                bg: _highFg(scheme).withValues(alpha: 0.12),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                              ),
-                              child: _HighLowSeparator(color: scheme),
-                            ),
-                            Expanded(
-                              child: _HlChip(
-                                label: 'Low',
-                                value: low,
-                                icon: Icons.south_west_rounded,
-                                fg: _lowFg(scheme),
-                                bg: _lowFg(scheme).withValues(alpha: 0.12),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
             ),
           ),
         ),
-      );
-    });
-  }
-
-  static Color _highFg(ColorScheme scheme) {
-    return scheme.brightness == Brightness.dark
-        ? const Color(0xFF69F0AE)
-        : const Color(0xFF00796B);
-  }
-
-  static Color _lowFg(ColorScheme scheme) {
-    return scheme.brightness == Brightness.dark
-        ? const Color(0xFFFF9E80)
-        : const Color(0xFFC62828);
+      ),
+    );
   }
 }
 
-class _HlChip extends StatelessWidget {
-  const _HlChip({
-    required this.label,
-    required this.value,
+class _LogoTile extends StatelessWidget {
+  const _LogoTile({required this.meta});
+
+  final _SymbolMeta meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF1FF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Icon(meta.icon, color: meta.iconColor, size: 22),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  _SparklinePainter({required this.values, required this.strokeColor});
+
+  final List<double> values;
+  final Color strokeColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    final minV = values.reduce(math.min);
+    final maxV = values.reduce(math.max);
+    final span = (maxV - minV).abs();
+    final paint =
+        Paint()
+          ..color = strokeColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.3
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = (i / (values.length - 1)) * size.width;
+      final normalized = span <= 0.000001 ? 0.5 : (values[i] - minV) / span;
+      final y = size.height - (normalized * size.height);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
+    return oldDelegate.values != values ||
+        oldDelegate.strokeColor != strokeColor;
+  }
+}
+
+class _SymbolMeta {
+  const _SymbolMeta({
+    required this.name,
+    required this.ticker,
     required this.icon,
-    required this.fg,
-    required this.bg,
+    required this.iconColor,
   });
 
-  final String label;
-  final double? value;
+  final String name;
+  final String ticker;
   final IconData icon;
-  final Color fg;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = value != null ? value!.toStringAsFixed(4) : '—';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: fg.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: fg),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                    color: fg.withValues(alpha: 0.85),
-                  ),
-                ),
-                Text(
-                  text,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: fg,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  final Color iconColor;
 }
 
-/// Vertical accent between session high / low — reads as a clear split without heavy chrome.
-class _HighLowSeparator extends StatelessWidget {
-  const _HighLowSeparator({required this.color});
-
-  final ColorScheme color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: SizedBox(
-        height: 22,
-        width: 14,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    color.outlineVariant.withValues(alpha: 0.15),
-                    color.primary.withValues(alpha: 0.55),
-                    color.secondary.withValues(alpha: 0.45),
-                    color.outlineVariant.withValues(alpha: 0.15),
-                  ],
-                ),
-              ),
-              child: const SizedBox(width: 3, height: 22),
-            ),
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.surfaceContainerHighest,
-                border: Border.all(
-                  color: color.primary.withValues(alpha: 0.65),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.primary.withValues(alpha: 0.25),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+_SymbolMeta _symbolMeta(String symbol) {
+  final raw = symbol.contains(':') ? symbol.split(':').last : symbol;
+  switch (raw.toUpperCase()) {
+    case 'AAPL':
+      return const _SymbolMeta(
+        name: 'Apple Inc.',
+        ticker: 'AAPL',
+        icon: Icons.phone_iphone_rounded,
+        iconColor: Color(0xFF101216),
+      );
+    case 'NVDA':
+      return const _SymbolMeta(
+        name: 'Nvidia',
+        ticker: 'NVDA',
+        icon: Icons.memory_rounded,
+        iconColor: Color(0xFF3B9B36),
+      );
+    case 'ZM':
+      return const _SymbolMeta(
+        name: 'Zoom Video',
+        ticker: 'ZM',
+        icon: Icons.videocam_rounded,
+        iconColor: Color(0xFF3B82F6),
+      );
+    case 'MSFT':
+      return const _SymbolMeta(
+        name: 'Microsoft',
+        ticker: 'MSFT',
+        icon: Icons.window_rounded,
+        iconColor: Color(0xFF0B66C3),
+      );
+    default:
+      return _SymbolMeta(
+        name: raw.replaceAll('_', '/'),
+        ticker: raw.toUpperCase(),
+        icon: Icons.show_chart_rounded,
+        iconColor: const Color(0xFF3555C8),
+      );
   }
 }
 
 class MarketListDivider extends StatelessWidget {
   const MarketListDivider({super.key});
-
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Icon(
-              Icons.show_chart_rounded,
-              size: 14,
-              color: scheme.primary.withValues(alpha: 0.35),
-            ),
-          ),
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox(height: 10);
   }
 }

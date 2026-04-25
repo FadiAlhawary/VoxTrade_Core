@@ -16,6 +16,8 @@ class MarketChartController extends GetxController {
 
   final RxDouble lastPrice = 0.0.obs;
   final RxList<LiveCandle> candles = <LiveCandle>[].obs;
+  String get priceUpdateId => 'market_price_$symbol';
+  String get highLowUpdateId => 'market_high_low_$symbol';
 
   StreamSubscription<MarketTick>? _subscription;
 
@@ -27,6 +29,7 @@ class MarketChartController extends GetxController {
 
     _subscription = socket.subscribeToSymbol(symbol).listen((tick) {
       lastPrice.value = tick.price;
+      update([priceUpdateId]);
       _applyTickToCandles(tick);
     });
   }
@@ -60,6 +63,8 @@ class MarketChartController extends GetxController {
     if (candles.length > 100) {
       candles.removeRange(0, candles.length - 100);
     }
+
+    update([highLowUpdateId]);
   }
 
   @override

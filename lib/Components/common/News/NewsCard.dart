@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:voxtrade_core/Components/Loader.dart';
 import 'package:voxtrade_core/Components/common/News/NewFliter.dart';
 import 'package:voxtrade_core/assembler/Controller/NewsController.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'dart:math' as math;
 
 class NewsCard extends StatefulWidget {
   final NewsType type;
@@ -19,9 +18,11 @@ class NewsCard extends StatefulWidget {
 class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
   static const _scrollThreshold = 8.0;
   static const _filterAnimDuration = Duration(milliseconds: 280);
+  static const _shimmerDuration = Duration(milliseconds: 900);
 
   ScrollController? _scrollController;
   AnimationController? _filterAnimCtrl;
+  late final AnimationController _shimmerAnimCtrl;
   Animation<double>? _filterSizeFactor;
   Animation<double>? _filterOpacity;
 
@@ -31,6 +32,10 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _shimmerAnimCtrl = AnimationController(
+      vsync: this,
+      duration: _shimmerDuration,
+    )..repeat();
     if (widget.type == NewsType.company) {
       _scrollController = ScrollController();
       _scrollController!.addListener(_onCompanyScroll);
@@ -81,6 +86,7 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
     _scrollController?.removeListener(_onCompanyScroll);
     _scrollController?.dispose();
     _filterAnimCtrl?.dispose();
+    _shimmerAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -119,11 +125,11 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
           child: Obx(() {
             if (widget.type == NewsType.market) {
               if (widget.newsController.isMarketNewsLoading.value) {
-                return const Center(child: Loader());
+                return _buildNewsShimmer(themeController);
               }
             } else {
               if (widget.newsController.isCompanyNewsLoading.value) {
-                return const Center(child: Loader());
+                return _buildNewsShimmer(themeController);
               }
             }
             if (widget.type == NewsType.market) {
@@ -154,15 +160,26 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(
-                      vertical: 1,
-                      horizontal: 10,
+                      vertical: 6,
+                      horizontal: 12,
                     ),
                     child: Card(
-                      elevation: 8,
+                      elevation: 2,
+                      shadowColor: Colors.black.withValues(alpha: 0.12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color:
+                              themeController.isDarkMode.value
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(12),
                           color:
                               themeController.isDarkMode.value
                                   ? Colors.grey.shade900
@@ -184,6 +201,105 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
           }),
         ),
       ],
+    );
+  }
+
+  Widget _buildNewsShimmer(ThemeController themeController) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+          child: AnimatedBuilder(
+            animation: _shimmerAnimCtrl,
+            builder: (context, child) {
+              final shimmerValue = _shimmerAnimCtrl.value;
+              final pulseOpacity =
+                  0.88 +
+                  (0.12 *
+                      ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
+              return ShaderMask(
+                shaderCallback: (bounds) {
+                  return LinearGradient(
+                    begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.2),
+                    end: Alignment(-0.8 + (4.0 * shimmerValue), 0.2),
+                    colors: [
+                      Colors.white.withValues(alpha: 0.04),
+                      Colors.white.withValues(alpha: 0.55),
+                      Colors.white.withValues(alpha: 0.04),
+                    ],
+                    stops: const [0.42, 0.5, 0.58],
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.srcATop,
+                child: Opacity(opacity: pulseOpacity, child: child),
+              );
+            },
+            child: _buildShimmerCard(themeController),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerCard(ThemeController themeController) {
+    final baseColor =
+        themeController.isDarkMode.value
+            ? Colors.grey.shade800
+            : Colors.grey.shade300;
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color:
+              themeController.isDarkMode.value
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        color:
+            themeController.isDarkMode.value
+                ? Colors.grey.shade900
+                : Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 14,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 14,
+              width: 220,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 140,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
