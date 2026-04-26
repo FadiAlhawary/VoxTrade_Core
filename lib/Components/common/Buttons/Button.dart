@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:voxtrade_core/Components/Loader.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 
 import '../../../assembler/common/enum.dart';
@@ -33,7 +32,14 @@ class Button extends StatelessWidget {
     final Color foregroundColor = isDarkMode ? Colors.black : Colors.white;
     final Widget child =
         isLoading
-            ? Loader(width: buttonWidth, height: buttonHeight, isCenter: false)
+            ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
+              ),
+            )
             : Text(label);
     switch (purpose) {
       case ButtonPurpose.primary:

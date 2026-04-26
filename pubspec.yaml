@@ -18,6 +18,7 @@ dependencies:
   signalr_netcore: ^1.4.3
   financial_chart: ^0.4.1
   localstorage: ^6.0.0
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/MarketController.dart';
 import 'package:voxtrade_core/assembler/Controller/NewsController.dart';
+import 'package:voxtrade_core/assembler/Controller/PortfolioController.dart';
 import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 
 class AppShellBinding extends Bindings {
@@ -18,6 +19,9 @@ class AppShellBinding extends Bindings {
     }
     if (!Get.isRegistered<MarketController>()) {
       Get.lazyPut(() => MarketController(), fenix: true);
+    }
+    if (!Get.isRegistered<PortfolioController>()) {
+      Get.lazyPut(() => PortfolioController(), fenix: true);
     }
   }
 }

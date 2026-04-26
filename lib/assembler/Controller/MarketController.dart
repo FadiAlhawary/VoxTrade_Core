@@ -63,6 +63,8 @@ class MarketController extends GetxController {
         title: 'Error',
         status: SnackBarCompStatus.danger,
       );
+    } finally {
+      isLoading.value = false;
     }
   }
 }

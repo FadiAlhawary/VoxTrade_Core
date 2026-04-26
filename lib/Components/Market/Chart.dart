@@ -4,6 +4,7 @@ import 'package:financial_chart/financial_chart.dart';
 import 'package:voxtrade_core/Models/LiveCandle.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
+import 'package:voxtrade_core/utils/Helper.dart';
 
 class LiveMarketChart extends StatefulWidget {
   final String symbol;
@@ -18,12 +19,15 @@ class _LiveMarketChartState extends State<LiveMarketChart> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<MarketChartController>(tag: widget.symbol);
+    final controller =
+        Get.isRegistered<MarketChartController>(tag: widget.symbol)
+            ? Get.find<MarketChartController>(tag: widget.symbol)
+            : Get.put(MarketChartController(widget.symbol), tag: widget.symbol);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.symbol),
+        title: Text(displayMarketName(widget.symbol)),
         actions: [
           IconButton(
             tooltip: 'Chart settings',
@@ -175,11 +179,51 @@ class _LiveChartView extends StatefulWidget {
 
 class _LiveChartViewState extends State<_LiveChartView>
     with TickerProviderStateMixin {
+  late final GDataSource<int, GData<int>> _dataSource;
+  late GChart _chart;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataSource = _createDataSource(widget.data);
+    _chart = _createChart(dataSource: _dataSource, chartType: widget.chartType);
+  }
+
+  @override
+  void didUpdateWidget(covariant _LiveChartView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.chartType != widget.chartType) {
+      _chart.dispose();
+      _chart = _createChart(
+        dataSource: _dataSource,
+        chartType: widget.chartType,
+      );
+    }
+
+    _syncChartData(widget.data);
+  }
+
+  @override
+  void dispose() {
+    _chart.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Get.find<ThemeController>().isDarkMode.value;
-    final dataSource = GDataSource<int, GData<int>>(
-      dataList: widget.data,
+    _chart.theme = isDark ? GThemeDark() : GThemeLight();
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: GChartWidget(chart: _chart, tickerProvider: this),
+    );
+  }
+
+  GDataSource<int, GData<int>> _createDataSource(List<GData<int>> data) {
+    return GDataSource<int, GData<int>>(
+      dataList: List<GData<int>>.from(data),
       seriesProperties: const [
         GDataSeriesProperty(key: 'open', label: 'Open', precision: 2),
         GDataSeriesProperty(key: 'high', label: 'High', precision: 2),
@@ -188,17 +232,25 @@ class _LiveChartViewState extends State<_LiveChartView>
         GDataSeriesProperty(key: 'volume', label: 'Volume', precision: 0),
       ],
     );
+  }
 
-    final chart = GChart(
+  GChart _createChart({
+    required GDataSource<int, GData<int>> dataSource,
+    required _ChartType chartType,
+  }) {
+    return GChart(
       dataSource: dataSource,
-      theme: isDark ? GThemeDark() : GThemeLight(),
+      theme:
+          Get.find<ThemeController>().isDarkMode.value
+              ? GThemeDark()
+              : GThemeLight(),
       panels: [
         GPanel(
           valueViewPorts: [
             GValueViewPort(
               valuePrecision: 2,
               autoScaleStrategy: GValueViewPortAutoScaleStrategyMinMax(
-                dataKeys: _valueKeysForType(widget.chartType),
+                dataKeys: _valueKeysForType(chartType),
                 marginStart: GSize.viewHeightRatio(0.08),
                 marginEnd: GSize.viewHeightRatio(0.08),
               ),
@@ -206,15 +258,24 @@ class _LiveChartViewState extends State<_LiveChartView>
           ],
           valueAxes: [GValueAxis()],
           pointAxes: [GPointAxis()],
-          graphs: [GGraphGrids(), _buildGraph(widget.chartType)],
+          graphs: [GGraphGrids(), _buildGraph(chartType)],
         ),
       ],
     );
+  }
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: GChartWidget(chart: chart, tickerProvider: this),
+  void _syncChartData(List<GData<int>> nextData) {
+    _dataSource.dataList
+      ..clear()
+      ..addAll(nextData);
+
+    // Keep horizontal viewport (user pan/scroll) and only refresh drawing.
+    _chart.autoScaleViewports(
+      resetPointViewPort: false,
+      resetValueViewPort: true,
+      animation: false,
     );
+    _chart.repaint(layout: false);
   }
 
   GGraph _buildGraph(_ChartType type) {

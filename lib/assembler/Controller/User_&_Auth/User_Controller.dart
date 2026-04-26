@@ -61,25 +61,31 @@ class UserController extends GetxController {
     Get.offAllNamed(RouteStrings.signIn);
   }
 
-  Future<void> registerFunction(RegisterDTO registerDTO) async {
+  Future<bool> registerFunction(RegisterDTO registerDTO) async {
     try {
       isLoading.value = true;
       var data = await register(registerDTO);
       if (data.success) {
+        if (data.user != null) {
+          await setUser(data.user!);
+        }
         SnackBarComp.show(
           data.message,
           title: "Success",
           status: SnackBarCompStatus.success,
         );
+        return true;
       } else {
         SnackBarComp.show(
           data.message,
           title: "Error",
           status: SnackBarCompStatus.danger,
         );
+        return false;
       }
     } catch (e) {
       SnackBarComp.show(e.toString());
+      return false;
     } finally {
       isLoading.value = false;
     }

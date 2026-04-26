@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 
 class TextBoxField extends StatefulWidget {
@@ -15,6 +14,9 @@ class TextBoxField extends StatefulWidget {
   final VoidCallback? onSufixIconClick;
   final bool isisSenstive;
   final Function(String value)? onChange;
+  final TextInputType? keyboardType;
+  final String? suffixText;
+  final double horizontalPadding;
 
   const TextBoxField({
     super.key,
@@ -29,6 +31,9 @@ class TextBoxField extends StatefulWidget {
     this.onSufixIconClick,
     this.isisSenstive = false,
     this.onChange,
+    this.keyboardType,
+    this.suffixText,
+    this.horizontalPadding = 20,
   });
 
   @override
@@ -94,9 +99,10 @@ class _TextBoxFieldState extends State<TextBoxField> {
 
     //===================================
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: widget.horizontalPadding),
       child: TextField(
         controller: widget.objectName,
+        keyboardType: widget.keyboardType,
         cursorColor: isDarkMode ? Colors.white : Colors.black,
         obscureText: isObscureText,
         decoration: InputDecoration(
@@ -109,6 +115,7 @@ class _TextBoxFieldState extends State<TextBoxField> {
                   : widget.preFixIcon,
           suffixIcon: suffix,
           hintText: widget.placeHolder,
+          suffixText: widget.suffixText,
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.red, width: 2),

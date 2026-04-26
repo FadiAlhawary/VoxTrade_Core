@@ -1,27 +1,33 @@
+import 'dart:math' as math;
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Models/wallet_activity_models.dart';
+import 'package:voxtrade_core/assembler/Controller/NavBarController.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 
 /// Hero gradient — blue tones; [Brightness.dark] uses deeper blues on dark surfaces.
 List<Color> _walletHeroGradientColors(Brightness brightness) {
   if (brightness == Brightness.dark) {
-    return const [
-      Color(0xFF0C1222),
-      Color(0xFF1E3A8A),
-      Color(0xFF1D4ED8),
-    ];
+    return const [Color(0xFF0C1222), Color(0xFF1E3A8A), Color(0xFF1D4ED8)];
   }
-  return const [
-    Color(0xFF1E3A8A),
-    Color(0xFF2563EB),
-    Color(0xFF3B82F6),
-  ];
+  return const [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF3B82F6)];
 }
 
-class WalletPage extends StatelessWidget {
-  WalletPage({super.key});
+class WalletPage extends StatefulWidget {
+  const WalletPage({super.key});
+
+  @override
+  State<WalletPage> createState() => _WalletPageState();
+}
+
+class _WalletPageState extends State<WalletPage>
+    with SingleTickerProviderStateMixin {
+  static const int _walletTabIndex = 4;
+  late final AnimationController _shimmerAnimCtrl;
+  bool _wasWalletTabVisible = false;
 
   static const double _sectionGap = 28;
   static const double _radiusCard = 20;
@@ -29,224 +35,378 @@ class WalletPage extends StatelessWidget {
   static const double _radiusPill = 30;
 
   @override
+  void initState() {
+    super.initState();
+    _shimmerAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerAnimCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final walletController = Get.find<WalletController>();
     final themeController = Get.find<ThemeController>();
+    final navController = Get.find<NavBarController>();
 
-    return Obx(() {
-      themeController.isDarkMode.value;
-      final theme = Theme.of(context);
-      final colorScheme = theme.colorScheme;
-      final textTheme = theme.textTheme;
-      final heroColors = _walletHeroGradientColors(theme.brightness);
+    return GetBuilder<NavBarController>(
+      builder: (_) {
+        final isWalletVisible = navController.tabIndex == _walletTabIndex;
+        if (isWalletVisible && !_wasWalletTabVisible) {
+          _wasWalletTabVisible = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            walletController.fetchWallet();
+          });
+        } else if (!isWalletVisible) {
+          _wasWalletTabVisible = false;
+        }
 
-      return Scaffold(
-        backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          title: Text(
-            'Wallet',
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface,
-              letterSpacing: -0.3,
-            ),
-          ),
-          centerTitle: false,
-          backgroundColor: colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          foregroundColor: colorScheme.onSurface,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SectionTitle(
-                  text: 'Overview',
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
+        return Obx(() {
+          themeController.isDarkMode.value;
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final textTheme = theme.textTheme;
+          final heroColors = _walletHeroGradientColors(theme.brightness);
+          final isLoading = walletController.isLoading.value;
+
+          return Scaffold(
+            backgroundColor: colorScheme.surface,
+            appBar: AppBar(
+              title: Text(
+                'Wallet',
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.3,
                 ),
-                const SizedBox(height: 16),
-                _BalanceHeroCard(
-                  balance: walletController.totalBalance,
-                  gradientColors: heroColors,
-                ),
-                const SizedBox(height: _sectionGap),
-                Obx(
-                  () => IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _MetricTile(
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          icon: Icons.account_balance_outlined,
-                          label: 'Available',
-                          value:
-                              '\$${walletController.availableToTrade.value.toStringAsFixed(2)}',
-                          radius: _radiusMetric,
-                        ),
-                        const SizedBox(width: 14),
-                        _MetricTile(
-                          colorScheme: colorScheme,
-                          textTheme: textTheme,
-                          icon: Icons.pending_actions_outlined,
-                          label: 'In orders',
-                          value:
-                              '\$${walletController.reservedInOrders.value.toStringAsFixed(2)}',
-                          radius: _radiusMetric,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: _sectionGap),
-                _SectionTitle(
-                  text: 'Funding',
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-                _WhiteElevatedCard(
-                  radius: _radiusCard,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _IconBadge(
-                              colorScheme: colorScheme,
-                              icon: Icons.account_balance_wallet_outlined,
+              ),
+              centerTitle: false,
+              backgroundColor: colorScheme.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              foregroundColor: colorScheme.onSurface,
+              actions: [
+                IconButton(
+                  onPressed:
+                      isLoading ? null : () => walletController.fetchWallet(),
+                  icon:
+                      isLoading
+                          ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.primary,
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Payment methods',
-                                    style: textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: colorScheme.onSurface,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Link a bank account or card to move money in and out.',
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                      height: 1.45,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _GradientPillButton(
-                          height: 54,
-                          radius: _radiusPill,
-                          onPressed: walletController.addPaymentMethod,
-                          icon: Icons.add_card_rounded,
-                          label: 'Add payment method',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: _sectionGap),
-                _SectionTitle(
-                  text: 'Recent activity',
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-                Obx(
-                  () => _RecentActivityCard(
-                    colorScheme: colorScheme,
-                    textTheme: textTheme,
-                    cardRadius: _radiusCard,
-                    transactions:
-                        walletController.recentWalletActivity.take(5).toList(),
-                    onSeeAll: walletController.openFullWalletHistory,
-                  ),
-                ),
-                const SizedBox(height: _sectionGap),
-                _SectionTitle(
-                  text: 'History',
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-                _WhiteElevatedCard(
-                  radius: _radiusCard,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Statements & activity',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.onSurface,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Review orders and fills across your accounts.',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.45,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _OutlinePillButton(
-                                height: 52,
-                                radius: _radiusPill,
-                                colorScheme: colorScheme,
-                                onPressed: walletController.viewOrderHistory,
-                                icon: Icons.receipt_long_rounded,
-                                label: 'Orders history',
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _OutlinePillButton(
-                                height: 52,
-                                radius: _radiusPill,
-                                colorScheme: colorScheme,
-                                onPressed: walletController.viewTradeHistory,
-                                icon: Icons.candlestick_chart_rounded,
-                                label: 'Trade history',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                          )
+                          : const Icon(Icons.refresh_rounded),
                 ),
               ],
             ),
+            body: SafeArea(
+              child:
+                  isLoading
+                      ? _buildWalletShimmer(theme)
+                      : RefreshIndicator(
+                        onRefresh: () => walletController.fetchWallet(),
+                        color: colorScheme.primary,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _SectionTitle(
+                                text: 'Overview',
+                                colorScheme: colorScheme,
+                                textTheme: textTheme,
+                              ),
+                              const SizedBox(height: 16),
+                              _BalanceHeroCard(
+                                balance: walletController.wallet.value.balance,
+                                gradientColors: heroColors,
+                              ),
+                              const SizedBox(height: _sectionGap),
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _MetricTile(
+                                      colorScheme: colorScheme,
+                                      textTheme: textTheme,
+                                      icon: Icons.account_balance_outlined,
+                                      label: 'Available',
+                                      value:
+                                          '\$${walletController.wallet.value.availableBalance.toStringAsFixed(2)}',
+                                      radius: _radiusMetric,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    _MetricTile(
+                                      colorScheme: colorScheme,
+                                      textTheme: textTheme,
+                                      icon: Icons.pending_actions_outlined,
+                                      label: 'In orders',
+                                      value:
+                                          '\$${walletController.wallet.value.reservedBalance.toStringAsFixed(2)}',
+                                      radius: _radiusMetric,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: _sectionGap),
+                              _SectionTitle(
+                                text: 'Funding',
+                                colorScheme: colorScheme,
+                                textTheme: textTheme,
+                              ),
+                              const SizedBox(height: 16),
+                              _WhiteElevatedCard(
+                                radius: _radiusCard,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _IconBadge(
+                                            colorScheme: colorScheme,
+                                            icon:
+                                                Icons
+                                                    .account_balance_wallet_outlined,
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Payment methods',
+                                                  style: textTheme.titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color:
+                                                            colorScheme
+                                                                .onSurface,
+                                                        letterSpacing: -0.2,
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  'Link a bank account or card to move money in and out.',
+                                                  style: textTheme.bodyMedium
+                                                      ?.copyWith(
+                                                        color:
+                                                            colorScheme
+                                                                .onSurfaceVariant,
+                                                        height: 1.45,
+                                                        fontSize: 14,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _GradientPillButton(
+                                        height: 54,
+                                        radius: _radiusPill,
+                                        onPressed:
+                                            walletController.addPaymentMethod,
+                                        icon: Icons.add_card_rounded,
+                                        label: 'Add payment method',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: _sectionGap),
+                              _SectionTitle(
+                                text: 'Recent activity',
+                                colorScheme: colorScheme,
+                                textTheme: textTheme,
+                              ),
+                              const SizedBox(height: 16),
+                              _RecentActivityCard(
+                                colorScheme: colorScheme,
+                                textTheme: textTheme,
+                                cardRadius: _radiusCard,
+                                transactions:
+                                    walletController.recentWalletActivity
+                                        .take(5)
+                                        .toList(),
+                                onSeeAll:
+                                    walletController.openFullWalletHistory,
+                              ),
+                              const SizedBox(height: _sectionGap),
+                              _SectionTitle(
+                                text: 'History',
+                                colorScheme: colorScheme,
+                                textTheme: textTheme,
+                              ),
+                              const SizedBox(height: 16),
+                              _WhiteElevatedCard(
+                                radius: _radiusCard,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Statements & activity',
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: colorScheme.onSurface,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Review orders and fills across your accounts.',
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                          height: 1.45,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: _OutlinePillButton(
+                                              height: 52,
+                                              radius: _radiusPill,
+                                              colorScheme: colorScheme,
+                                              onPressed:
+                                                  walletController
+                                                      .viewOrderHistory,
+                                              icon: Icons.receipt_long_rounded,
+                                              label: 'Orders history',
+                                            ),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: _OutlinePillButton(
+                                              height: 52,
+                                              radius: _radiusPill,
+                                              colorScheme: colorScheme,
+                                              onPressed:
+                                                  walletController
+                                                      .viewTradeHistory,
+                                              icon:
+                                                  Icons
+                                                      .candlestick_chart_rounded,
+                                              label: 'Trade history',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildWalletShimmer(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final base = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+
+    Widget block(double h, {double radius = 14}) {
+      return _shimmer(
+        child: Container(
+          height: h,
+          decoration: BoxDecoration(
+            color: base,
+            borderRadius: BorderRadius.circular(radius),
           ),
         ),
       );
-    });
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      children: [
+        block(14, radius: 8),
+        const SizedBox(height: 14),
+        block(184, radius: 24),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            Expanded(child: block(102, radius: 18)),
+            const SizedBox(width: 14),
+            Expanded(child: block(102, radius: 18)),
+          ],
+        ),
+        const SizedBox(height: 24),
+        block(14, radius: 8),
+        const SizedBox(height: 14),
+        block(176, radius: 20),
+        const SizedBox(height: 24),
+        block(14, radius: 8),
+        const SizedBox(height: 14),
+        ...List.generate(
+          4,
+          (_) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: block(74, radius: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _shimmer({required Widget child}) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimCtrl,
+      child: child,
+      builder: (context, widgetChild) {
+        final shimmerValue = _shimmerAnimCtrl.value;
+        final pulseOpacity =
+            0.86 + (0.14 * ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.25),
+              end: Alignment(-0.8 + (4.0 * shimmerValue), 0.25),
+              colors: [
+                Colors.white.withValues(alpha: 0.04),
+                Colors.white.withValues(alpha: 0.55),
+                Colors.white.withValues(alpha: 0.04),
+              ],
+              stops: const [0.42, 0.5, 0.58],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: Opacity(opacity: pulseOpacity, child: widgetChild),
+        );
+      },
+    );
   }
 }
 
@@ -285,13 +445,14 @@ class _RecentActivityCard extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: transactions.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  thickness: 1,
-                  indent: 52,
-                  endIndent: 0,
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-                ),
+                separatorBuilder:
+                    (_, __) => Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 52,
+                      endIndent: 0,
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                    ),
                 itemBuilder: (context, index) {
                   return WalletTransactionItem(
                     transaction: transactions[index],
@@ -306,7 +467,10 @@ class _RecentActivityCard extends StatelessWidget {
                   onPressed: onSeeAll,
                   style: TextButton.styleFrom(
                     foregroundColor: colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                   ),
                   child: Text(
                     'See all',
@@ -468,12 +632,9 @@ class _SectionTitle extends StatelessWidget {
 // —————————————————————————————————————————————————————————————————————
 
 class _BalanceHeroCard extends StatelessWidget {
-  const _BalanceHeroCard({
-    required this.balance,
-    required this.gradientColors,
-  });
+  const _BalanceHeroCard({required this.balance, required this.gradientColors});
 
-  final RxDouble balance;
+  final double balance;
   final List<Color> gradientColors;
 
   @override
@@ -491,7 +652,9 @@ class _BalanceHeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.22 : 0.35),
+            color: const Color(
+              0xFF2563EB,
+            ).withValues(alpha: isDark ? 0.22 : 0.35),
             blurRadius: 28,
             offset: const Offset(0, 14),
             spreadRadius: -4,
@@ -503,63 +666,63 @@ class _BalanceHeroCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Obx(
-        () => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Total balance',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Total balance',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Text(
-                    'USD',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
-                          fontSize: 11,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              '\$${balance.value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.9,
-                height: 1.05,
-                fontFeatures: [FontFeature.tabularFigures()],
               ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Cash and positions · Est. now',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.72),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Text(
+                  'USD',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    fontSize: 11,
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            '\$${balance.toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.9,
+              height: 1.05,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Cash and positions · Est. now',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -603,16 +766,14 @@ class _MetricTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: colorScheme.outlineVariant,
-            width: 1,
-          ),
+          border: Border.all(color: colorScheme.outlineVariant, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark
-                    ? 0.35
-                    : 0.045,
+                alpha:
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 0.35
+                        : 0.045,
               ),
               blurRadius: 18,
               offset: const Offset(0, 6),
@@ -628,11 +789,7 @@ class _MetricTile extends StatelessWidget {
                 color: colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                color: colorScheme.primary,
-                size: 22,
-              ),
+              child: Icon(icon, color: colorScheme.primary, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -680,10 +837,7 @@ class _MetricTile extends StatelessWidget {
 // —————————————————————————————————————————————————————————————————————
 
 class _WhiteElevatedCard extends StatelessWidget {
-  const _WhiteElevatedCard({
-    required this.radius,
-    required this.child,
-  });
+  const _WhiteElevatedCard({required this.radius, required this.child});
 
   final double radius;
   final Widget child;
@@ -713,10 +867,7 @@ class _WhiteElevatedCard extends StatelessWidget {
 }
 
 class _IconBadge extends StatelessWidget {
-  const _IconBadge({
-    required this.colorScheme,
-    required this.icon,
-  });
+  const _IconBadge({required this.colorScheme, required this.icon});
 
   final ColorScheme colorScheme;
   final IconData icon;
@@ -729,11 +880,7 @@ class _IconBadge extends StatelessWidget {
         color: colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Icon(
-        icon,
-        color: colorScheme.primary,
-        size: 24,
-      ),
+      child: Icon(icon, color: colorScheme.primary, size: 24),
     );
   }
 }
@@ -769,11 +916,7 @@ class _GradientPillButton extends StatelessWidget {
           height: height,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [
-                Color(0xFF3B82F6),
-                Color(0xFF2563EB),
-                Color(0xFF1D4ED8),
-              ],
+              colors: [Color(0xFF3B82F6), Color(0xFF2563EB), Color(0xFF1D4ED8)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),

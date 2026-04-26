@@ -41,7 +41,7 @@ class WalletHistoryPage extends StatelessWidget {
         final List<WalletTransaction> effectiveTransactions =
             transactions.isNotEmpty
                 ? transactions
-                : walletController.walletHistory
+                : walletController.wallet.value.walletHistory
                     .map(WalletTransaction.fromDto)
                     .toList();
 

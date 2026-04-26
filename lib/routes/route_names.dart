@@ -7,6 +7,7 @@ abstract class RouteStrings {
   static const String home = '/home';
   static const String markets = '/Markets';
   static const String marketBuySell = '/MarketBuySell';
-  static const String trades = '/trades';
+  static const String portfolio = '/portfolio';
+  static const String dashBoard = '/dash-board';
   static const String orders = '/orders';
 }

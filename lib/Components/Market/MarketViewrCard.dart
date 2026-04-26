@@ -22,7 +22,7 @@ class MarketChartTile extends StatelessWidget {
     final meta = _symbolMeta(instrument.symbol);
     final initialIsOpen =
         meta.marketType == _MarketType.forex
-            ? _isMarketActiveFromHub(controller.candles)
+            ? true
             : _isMarketOpen(
               meta.marketType,
               _referenceUtcFromHub(controller.candles),
@@ -54,6 +54,7 @@ class MarketChartTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: GetBuilder<MarketChartController>(
+              key: ValueKey(instrument.symbol),
               tag: instrument.symbol,
               id: controller.priceUpdateId,
               builder: (controller) {
@@ -61,13 +62,16 @@ class MarketChartTile extends StatelessWidget {
                 final referenceUtc = _referenceUtcFromHub(candles);
                 final isOpen =
                     meta.marketType == _MarketType.forex
-                        ? _isMarketActiveFromHub(candles)
+                        ? true
                         : _isMarketOpen(meta.marketType, referenceUtc);
                 final sparkline = candles
                     .map((c) => c.close)
                     .where((v) => v.isFinite)
                     .toList(growable: false);
-                final lastPrice = controller.lastPrice.value;
+                final lastPrice =
+                    controller.lastPrice.value > 0
+                        ? controller.lastPrice.value
+                        : (candles.isNotEmpty ? candles.last.close : 0.0);
                 final open = candles.isNotEmpty ? candles.first.open : 0.0;
                 final delta =
                     open == 0 ? 0.0 : ((lastPrice - open) / open) * 100;
@@ -85,7 +89,9 @@ class MarketChartTile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            meta.name,
+                            instrument.shortName.isNotEmpty
+                                ? instrument.shortName
+                                : meta.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -118,9 +124,7 @@ class MarketChartTile extends StatelessWidget {
                         painter: _SparklinePainter(
                           values: sparkline,
                           strokeColor:
-                              isOpen
-                                  ? changeColor
-                                  : const Color(0xFF7D8AA8),
+                              isOpen ? changeColor : const Color(0xFF7D8AA8),
                         ),
                       ),
                     ),
@@ -155,9 +159,9 @@ class MarketChartTile extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(999),
-                              color: const Color(0xFF616F8E).withValues(
-                                alpha: 0.28,
-                              ),
+                              color: const Color(
+                                0xFF616F8E,
+                              ).withValues(alpha: 0.28),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
@@ -184,9 +188,7 @@ class MarketChartTile extends StatelessWidget {
                           '\$${lastPrice.toStringAsFixed(2)}',
                           style: TextStyle(
                             color:
-                                isOpen
-                                    ? Colors.white
-                                    : const Color(0xFFD3DAEC),
+                                isOpen ? Colors.white : const Color(0xFFD3DAEC),
                             fontWeight: FontWeight.w800,
                             fontSize: 24,
                             letterSpacing: -0.4,
@@ -211,13 +213,6 @@ DateTime _referenceUtcFromHub(List<LiveCandle> candles) {
     return DateTime.fromMillisecondsSinceEpoch(candles.last.time, isUtc: true);
   }
   return DateTime.now().toUtc();
-}
-
-bool _isMarketActiveFromHub(List<LiveCandle> candles) {
-  if (candles.isEmpty) return false;
-  final lastEpochSec = candles.last.time ~/ 1000;
-  final nowEpochSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-  return (nowEpochSec - lastEpochSec) < 300;
 }
 
 class _LogoTile extends StatelessWidget {
@@ -299,8 +294,10 @@ class _SymbolMeta {
 }
 
 _SymbolMeta _symbolMeta(String symbol) {
-  final raw = symbol.contains(':') ? symbol.split(':').last : symbol.toUpperCase();
-  final exchange = symbol.contains(':') ? symbol.split(':').first.toUpperCase() : '';
+  final raw =
+      symbol.contains(':') ? symbol.split(':').last : symbol.toUpperCase();
+  final exchange =
+      symbol.contains(':') ? symbol.split(':').first.toUpperCase() : '';
   switch (raw) {
     case 'AAPL':
       return const _SymbolMeta(

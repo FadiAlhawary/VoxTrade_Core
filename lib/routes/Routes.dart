@@ -4,14 +4,15 @@ import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/assembler/Bindings/AppShellBinding.dart';
 import 'package:voxtrade_core/assembler/Bindings/order_history_binding.dart';
 import 'package:voxtrade_core/assembler/Bindings/trade_history_binding.dart';
+import 'package:voxtrade_core/pages/DashBoard_page.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
-import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
+import 'package:voxtrade_core/pages/Market_Buy_Sell_Entry.dart';
 import 'package:voxtrade_core/pages/Orders_Page.dart';
+import 'package:voxtrade_core/pages/Portfolio_Page.dart';
 import 'package:voxtrade_core/pages/Sign_In_page.dart';
 import 'package:voxtrade_core/pages/Sign_Up_page.dart';
 import 'package:voxtrade_core/pages/Markets.dart';
 import 'package:voxtrade_core/pages/Splash_page.dart';
-import 'package:voxtrade_core/pages/Trades_Page.dart';
 import 'package:voxtrade_core/routes/auth_middleware.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
@@ -39,7 +40,7 @@ class Routes {
       page: () {
         final args = Get.arguments;
         if (args is int) {
-          return MarketBuySell(instrumentId: args);
+          return MarketBuySellEntryPage(instrumentId: args);
         }
         return const Scaffold(
           body: Center(child: Text('Invalid instrument ID')),
@@ -47,8 +48,8 @@ class Routes {
       },
     ),
     GetPage(
-      name: RouteStrings.trades,
-      page: () => const TradesPage(),
+      name: RouteStrings.portfolio,
+      page: () => const PortfolioPage(),
       binding: TradeHistoryBinding(),
       middlewares: [AuthMiddleware()],
     ),
@@ -58,5 +59,6 @@ class Routes {
       binding: OrderHistoryBinding(),
       middlewares: [AuthMiddleware()],
     ),
+    GetPage(name: RouteStrings.dashBoard, page: () => const DashBoardPage()),
   ];
 }

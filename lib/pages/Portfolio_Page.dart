@@ -1,0 +1,1276 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/ModelDto/PortfolioPositionDto.dart';
+import 'package:voxtrade_core/Components/cards/order_card.dart';
+import 'package:voxtrade_core/Components/cards/trade_card.dart';
+import 'package:voxtrade_core/assembler/Controller/NavBarController.dart';
+import 'package:voxtrade_core/assembler/Controller/PortfolioController.dart';
+import 'package:voxtrade_core/assembler/Controller/OrderHistory.dart';
+import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
+import 'package:voxtrade_core/assembler/Controller/TradeHistoryController.dart';
+import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
+
+class PortfolioPage extends StatefulWidget {
+  const PortfolioPage({super.key});
+
+  @override
+  State<PortfolioPage> createState() => _PortfolioPageState();
+}
+
+class _PortfolioPageState extends State<PortfolioPage>
+    with SingleTickerProviderStateMixin {
+  static const _shimmerDuration = Duration(milliseconds: 950);
+  static const int _tradeTabIndex = 3;
+  late final AnimationController _shimmerAnimCtrl;
+
+  late final PortfolioController _portfolioController;
+  late final OrderHistoryController _orderHistoryController;
+  late final TradeHistoryController _tradeHistoryController;
+  late final ThemeController _themeController;
+  final Map<String, MarketChartController> _symbolControllers = {};
+  final Set<String> _ownedControllers = <String>{};
+  int _selectedTabIndex = 0;
+  String _selectedAccount = 'Primary';
+  String _selectedPortfolio = 'Growth';
+  int _assetScope = 5;
+  bool _wasTradeTabVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerAnimCtrl = AnimationController(
+      vsync: this,
+      duration: _shimmerDuration,
+    )..repeat();
+    _portfolioController =
+        Get.isRegistered<PortfolioController>()
+            ? Get.find<PortfolioController>()
+            : Get.put(PortfolioController());
+    _orderHistoryController =
+        Get.isRegistered<OrderHistoryController>()
+            ? Get.find<OrderHistoryController>()
+            : Get.put(OrderHistoryController());
+    _tradeHistoryController =
+        Get.isRegistered<TradeHistoryController>()
+            ? Get.find<TradeHistoryController>()
+            : Get.put(TradeHistoryController());
+    _themeController = Get.find<ThemeController>();
+  }
+
+  @override
+  void dispose() {
+    for (final symbol in _ownedControllers) {
+      if (Get.isRegistered<MarketChartController>(tag: symbol)) {
+        Get.delete<MarketChartController>(tag: symbol, force: true);
+      }
+    }
+    _symbolControllers.clear();
+    _ownedControllers.clear();
+    _shimmerAnimCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final navController = Get.find<NavBarController>();
+    return GetBuilder<NavBarController>(
+      builder: (_) {
+        final isTradeVisible = navController.tabIndex == _tradeTabIndex;
+        if (isTradeVisible && !_wasTradeTabVisible) {
+          _wasTradeTabVisible = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _refreshCurrentTabData();
+          });
+        } else if (!isTradeVisible) {
+          _wasTradeTabVisible = false;
+        }
+
+        return Obx(() {
+          final isDarkMode = _themeController.isDarkMode.value;
+          final cs = Theme.of(context).colorScheme;
+          final textTheme = Theme.of(context).textTheme;
+          final positions = _portfolioController.portfolio;
+          final isLoading = _portfolioController.isLoading.value;
+          _syncLivePriceControllers(positions);
+          final refreshHandler =
+              _selectedTabIndex == 0
+                  ? _portfolioController.fetchPortfolio
+                  : _selectedTabIndex == 1
+                  ? () => _orderHistoryController.fetchOrders()
+                  : _tradeHistoryController.fetchTrades;
+
+          return Scaffold(
+            backgroundColor: cs.surface,
+            // appBar: AppBar(
+            //   title: Text(
+            //     'Portfolio',
+            //     style: textTheme.titleLarge?.copyWith(
+            //       fontWeight: FontWeight.w700,
+            //       letterSpacing: -0.3,
+            //       color: cs.onSurface,
+            //     ),
+            //   ),
+            //   backgroundColor: cs.surface,
+            //   foregroundColor: cs.onSurface,
+            //   elevation: 0,
+            //   surfaceTintColor: Colors.transparent,
+            //   actions: [
+            //     IconButton(
+            //       icon: const Icon(Icons.notifications_none_rounded),
+            //       onPressed: () {},
+            //     ),
+            //   ],
+            // ),
+            body: RefreshIndicator(
+              onRefresh: refreshHandler,
+              color: cs.primary,
+              child: _buildTabBody(
+                context: context,
+                isDarkMode: isDarkMode,
+                positions: positions,
+                isLoading: isLoading,
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> _refreshCurrentTabData() async {
+    if (_selectedTabIndex == 0) {
+      await _portfolioController.fetchPortfolio();
+      return;
+    }
+    if (_selectedTabIndex == 1) {
+      await _orderHistoryController.fetchOrders();
+      return;
+    }
+    await _tradeHistoryController.fetchTrades();
+  }
+
+  Widget _buildTabBody({
+    required BuildContext context,
+    required bool isDarkMode,
+    required List<PortfolioPositionDto> positions,
+    required bool isLoading,
+  }) {
+    if (_selectedTabIndex == 0) {
+      if (isLoading && positions.isEmpty) {
+        return _buildLoadingState(isDarkMode);
+      }
+      return _buildPositionsContent(
+        context: context,
+        positions: positions,
+        isDarkMode: isDarkMode,
+      );
+    }
+
+    if (_selectedTabIndex == 1) {
+      return _buildOrdersTab(context);
+    }
+
+    return _buildHistoryTab(context);
+  }
+
+  Widget _buildPositionsContent({
+    required BuildContext context,
+    required List<PortfolioPositionDto> positions,
+    required bool isDarkMode,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final isWide = MediaQuery.of(context).size.width > 980;
+    final scopedPositions = _scopedPositions(positions);
+
+    if (positions.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        children: [
+          // _buildSetupSection(context),
+          // const SizedBox(height: 18),
+          _buildSectionTabs(context, positions.length),
+          const SizedBox(height: 14),
+          _buildAssetScopeTabs(context),
+          const SizedBox(height: 14),
+          _buildAssetsTableCard(context, const []),
+          const SizedBox(height: 34),
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 54,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          // const SizedBox(height: 12),
+          // Text(
+          //   'No positions available',
+          //   textAlign: TextAlign.center,
+          //   style: textTheme.titleMedium?.copyWith(
+          //     fontWeight: FontWeight.w600,
+          //     color: cs.onSurface,
+          //   ),
+          // ),
+          const SizedBox(height: 6),
+          Text(
+            'Your open instruments will appear here.',
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
+      children: [
+        // _buildSetupSection(context),
+        // const SizedBox(height: 16),
+        _buildSectionTabs(context, positions.length),
+        const SizedBox(height: 12),
+        if (isWide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 6,
+                child: Column(
+                  children: [
+                    _buildAssetScopeTabs(context),
+                    const SizedBox(height: 12),
+                    _buildAssetsTableCard(context, scopedPositions),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 5,
+                child: _buildAnalyticsPanel(context, scopedPositions),
+              ),
+            ],
+          )
+        else ...[
+          _buildAssetScopeTabs(context),
+          const SizedBox(height: 12),
+          _buildAssetsTableCard(context, scopedPositions),
+          const SizedBox(height: 14),
+          _buildAnalyticsPanel(context, scopedPositions),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSetupSection(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Setup',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _setupDropdown(
+                  context: context,
+                  label: 'Choose Account',
+                  value: _selectedAccount,
+                  options: const ['Primary', 'Trading', 'Savings'],
+                  onChanged:
+                      (value) => setState(() => _selectedAccount = value),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _setupDropdown(
+                  context: context,
+                  label: 'Choose Portfolio',
+                  value: _selectedPortfolio,
+                  options: const ['Growth', 'Balanced', 'Income'],
+                  onChanged:
+                      (value) => setState(() => _selectedPortfolio = value),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _setupDropdown({
+    required BuildContext context,
+    required String label,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.22)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(10),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          hint: Text(label),
+          items:
+              options
+                  .map(
+                    (option) => DropdownMenuItem<String>(
+                      value: option,
+                      child: Text(option),
+                    ),
+                  )
+                  .toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssetScopeTabs(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _scopeTab(
+              context: context,
+              title: 'Top 5',
+              selected: _assetScope == 5,
+              onTap: () => setState(() => _assetScope = 5),
+            ),
+          ),
+          Expanded(
+            child: _scopeTab(
+              context: context,
+              title: 'Top 10',
+              selected: _assetScope == 10,
+              onTap: () => setState(() => _assetScope = 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scopeTab({
+    required BuildContext context,
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssetsTableCard(
+    BuildContext context,
+    List<PortfolioPositionDto> positions,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Assets',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: () {},
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  textStyle: textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Asset'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _headerCell(context, 'Assets', flex: 3),
+              _headerCell(context, 'Volume', flex: 2),
+              _headerCell(context, 'Risk', flex: 2, alignEnd: true),
+              _headerCell(context, 'myRisk', flex: 2, alignEnd: true),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...positions.map(
+            (item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      item.short_name.isNotEmpty
+                          ? item.short_name
+                          : item.symbol,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _money(_liveMarketValue(item)),
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _money(
+                        (item.quantity * _effectivePrice(item) * 0.32).abs(),
+                      ),
+                      textAlign: TextAlign.end,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _money(_liveUnrealizedPnl(item).abs()),
+                      textAlign: TextAlign.end,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: _pnlColor(_liveUnrealizedPnl(item)),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerCell(
+    BuildContext context,
+    String label, {
+    required int flex,
+    bool alignEnd = false,
+  }) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Expanded(
+      flex: flex,
+      child: Text(
+        label,
+        textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: muted,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsPanel(
+    BuildContext context,
+    List<PortfolioPositionDto> positions,
+  ) {
+    return Column(
+      children: [
+        _buildAllocationCard(context, positions),
+        const SizedBox(height: 12),
+        _buildRiskCards(context, positions),
+      ],
+    );
+  }
+
+  Widget _buildAllocationCard(
+    BuildContext context,
+    List<PortfolioPositionDto> positions,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final total = positions.fold<double>(
+      0,
+      (sum, item) => sum + _liveMarketValue(item),
+    );
+    final chartItems = positions.take(5).toList();
+    final palette = const [
+      Color(0xFF4F6BFF),
+      Color(0xFFFF905D),
+      Color(0xFF32D0A0),
+      Color(0xFF4AB7FF),
+      Color(0xFF8A7DFF),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dollar Allocations In Top ${chartItems.length}',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 130,
+                height: 130,
+                child: CustomPaint(
+                  painter: _RingChartPainter(
+                    values: chartItems.map((e) => _liveMarketValue(e)).toList(),
+                    colors: palette,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _money(total),
+                      textAlign: TextAlign.center,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  children: List.generate(chartItems.length, (index) {
+                    final item = chartItems[index];
+                    final share =
+                        total <= 0 ? 0 : (_liveMarketValue(item) / total) * 100;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: palette[index % palette.length],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.short_name.isNotEmpty
+                                  ? item.short_name
+                                  : item.symbol,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${share.toStringAsFixed(0)}%',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRiskCards(
+    BuildContext context,
+    List<PortfolioPositionDto> positions,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final total = positions.fold<double>(
+      0,
+      (sum, item) => sum + _liveMarketValue(item),
+    );
+    final riskPercent =
+        total <= 0
+            ? 0
+            : (positions.fold<double>(
+                      0,
+                      (sum, item) => sum + _liveUnrealizedPnl(item).abs(),
+                    ) /
+                    total) *
+                100;
+    final riskiest =
+        positions.isEmpty
+            ? null
+            : positions.reduce(
+              (a, b) =>
+                  _liveUnrealizedPnl(a).abs() > _liveUnrealizedPnl(b).abs()
+                      ? a
+                      : b,
+            );
+    final largest =
+        positions.isEmpty
+            ? null
+            : positions.reduce(
+              (a, b) => _liveMarketValue(a) > _liveMarketValue(b) ? a : b,
+            );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Portfolio Risk Benchmark',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _riskCard(
+                  context,
+                  title: 'Dollar',
+                  value: _money(
+                    positions.fold<double>(
+                      0,
+                      (sum, item) => sum + _liveUnrealizedPnl(item).abs(),
+                    ),
+                  ),
+                  highlighted: true,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _riskCard(
+                  context,
+                  title: 'Percentage',
+                  value: '%${riskPercent.toStringAsFixed(2)}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _riskCard(
+                  context,
+                  title: 'Portfolio Value',
+                  value: _money(total),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _riskCard(
+                  context,
+                  title: 'Riskiest Asset',
+                  value:
+                      riskiest == null
+                          ? '-'
+                          : (riskiest.short_name.isNotEmpty
+                              ? riskiest.short_name
+                              : riskiest.symbol),
+                ),
+              ),
+            ],
+          ),
+          if (largest != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.primary.withValues(alpha: 0.22)),
+              ),
+              child: Text(
+                'Largest Investment: ${largest.short_name.isNotEmpty ? largest.short_name : largest.symbol} (${_money(_liveMarketValue(largest))})',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _riskCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    bool highlighted = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color:
+            highlighted
+                ? cs.primary.withValues(alpha: 0.12)
+                : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              highlighted
+                  ? cs.primary.withValues(alpha: 0.28)
+                  : cs.outline.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<PortfolioPositionDto> _scopedPositions(
+    List<PortfolioPositionDto> positions,
+  ) {
+    final sorted = [...positions]
+      ..sort((a, b) => _liveMarketValue(b).compareTo(_liveMarketValue(a)));
+    final limit = math.min(_assetScope, sorted.length);
+    return sorted.take(limit).toList();
+  }
+
+  Widget _buildOrdersTab(BuildContext context) {
+    return Obx(() {
+      final cs = Theme.of(context).colorScheme;
+      if (_orderHistoryController.isLoading.value &&
+          _orderHistoryController.orders.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 16),
+            const Center(child: CircularProgressIndicator()),
+          ],
+        );
+      }
+
+      if (_orderHistoryController.errorMessage.value != null &&
+          _orderHistoryController.orders.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 24),
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 52,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _orderHistoryController.errorMessage.value ??
+                  'Failed to load orders',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        );
+      }
+
+      if (_orderHistoryController.orders.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 24),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 52,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'No orders yet',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        );
+      }
+
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+        children: [
+          _buildSectionTabs(context, _portfolioController.portfolio.length),
+          const SizedBox(height: 12),
+          OrderHistoryTable(
+            orders: _orderHistoryController.orders,
+            onCancelPending: (o) => _orderHistoryController.cancelOrder(o),
+            isCancelling:
+                (id) => _orderHistoryController.cancellingOrderId.value == id,
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildHistoryTab(BuildContext context) {
+    return Obx(() {
+      final cs = Theme.of(context).colorScheme;
+      if (_tradeHistoryController.isLoading.value &&
+          _tradeHistoryController.trades.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 16),
+            const Center(child: CircularProgressIndicator()),
+          ],
+        );
+      }
+
+      if (_tradeHistoryController.errorMessage.value != null &&
+          _tradeHistoryController.trades.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 24),
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 52,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _tradeHistoryController.errorMessage.value ??
+                  'Failed to load trade history',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        );
+      }
+
+      if (_tradeHistoryController.trades.isEmpty) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+          children: [
+            _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 24),
+            Icon(
+              Icons.swap_horiz_rounded,
+              size: 52,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'No trade history yet',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        );
+      }
+
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+        children: [
+          _buildSectionTabs(context, _portfolioController.portfolio.length),
+          const SizedBox(height: 12),
+          TradeHistoryTable(trades: _tradeHistoryController.trades),
+        ],
+      );
+    });
+  }
+
+  Widget _buildSectionTabs(BuildContext context, int positionsCount) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _tabText(
+              context,
+              'Assets ($positionsCount)',
+              isSelected: _selectedTabIndex == 0,
+              onTap: () => setState(() => _selectedTabIndex = 0),
+            ),
+          ),
+          Expanded(
+            child: _tabText(
+              context,
+              'Orders',
+              isSelected: _selectedTabIndex == 1,
+              onTap: () => setState(() => _selectedTabIndex = 1),
+            ),
+          ),
+          Expanded(
+            child: _tabText(
+              context,
+              'History',
+              isSelected: _selectedTabIndex == 2,
+              onTap: () => setState(() => _selectedTabIndex = 2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabText(
+    BuildContext context,
+    String text, {
+    bool isSelected = false,
+    VoidCallback? onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: isSelected ? cs.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: textTheme.titleSmall?.copyWith(
+            color: isSelected ? Colors.white : cs.onSurfaceVariant,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _syncLivePriceControllers(List<PortfolioPositionDto> positions) {
+    final activeSymbols =
+        positions
+            .map((p) => _normalizeSymbol(p.symbol))
+            .where((s) => s.isNotEmpty)
+            .toSet();
+
+    for (final symbol in activeSymbols) {
+      if (_symbolControllers.containsKey(symbol)) continue;
+
+      MarketChartController controller;
+      if (Get.isRegistered<MarketChartController>(tag: symbol)) {
+        controller = Get.find<MarketChartController>(tag: symbol);
+      } else {
+        controller = Get.put(MarketChartController(symbol), tag: symbol);
+        _ownedControllers.add(symbol);
+      }
+      _symbolControllers[symbol] = controller;
+    }
+
+    final staleSymbols =
+        _symbolControllers.keys
+            .where((s) => !activeSymbols.contains(s))
+            .toList();
+    for (final symbol in staleSymbols) {
+      _symbolControllers.remove(symbol);
+      if (_ownedControllers.remove(symbol) &&
+          Get.isRegistered<MarketChartController>(tag: symbol)) {
+        Get.delete<MarketChartController>(tag: symbol, force: true);
+      }
+    }
+  }
+
+  String _normalizeSymbol(String rawSymbol) {
+    return rawSymbol.trim().toUpperCase();
+  }
+
+  double _effectivePrice(PortfolioPositionDto item) {
+    final symbol = _normalizeSymbol(item.symbol);
+    final livePrice = _symbolControllers[symbol]?.lastPrice.value ?? 0;
+    if (livePrice > 0) return livePrice;
+    return item.currentPrice;
+  }
+
+  double _liveMarketValue(PortfolioPositionDto item) {
+    return item.quantity * _effectivePrice(item);
+  }
+
+  double _liveUnrealizedPnl(PortfolioPositionDto item) {
+    return (_effectivePrice(item) - item.averageCost) * item.quantity;
+  }
+
+  Widget _buildLoadingState(bool isDarkMode) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+      children: [
+        _shimmer(
+          child: Container(
+            height: 195,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: List.generate(3, (i) {
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i == 2 ? 0 : 10),
+                child: _shimmer(
+                  child: Container(
+                    height: 22,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color:
+                          isDarkMode
+                              ? Colors.grey.shade800
+                              : Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 14),
+        ...List.generate(6, (_) => _positionShimmerCard(isDarkMode)),
+      ],
+    );
+  }
+
+  Widget _positionShimmerCard(bool isDarkMode) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: _shimmer(
+        child: Container(
+          height: 78,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _shimmer({required Widget child}) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimCtrl,
+      child: child,
+      builder: (context, widgetChild) {
+        final shimmerValue = _shimmerAnimCtrl.value;
+        final pulseOpacity =
+            0.86 + (0.14 * ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.25),
+              end: Alignment(-0.8 + (4.0 * shimmerValue), 0.25),
+              colors: [
+                Colors.white.withValues(alpha: 0.04),
+                Colors.white.withValues(alpha: 0.55),
+                Colors.white.withValues(alpha: 0.04),
+              ],
+              stops: const [0.42, 0.5, 0.58],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: Opacity(opacity: pulseOpacity, child: widgetChild),
+        );
+      },
+    );
+  }
+
+  String _money(double value) {
+    return '\$${value.toStringAsFixed(2)}';
+  }
+
+  Color _pnlColor(double pnl) {
+    return pnl >= 0 ? const Color(0xFF00C16A) : const Color(0xFFE2525C);
+  }
+}
+
+class _RingChartPainter extends CustomPainter {
+  _RingChartPainter({required this.values, required this.colors});
+
+  final List<double> values;
+  final List<Color> colors;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold<double>(0, (sum, item) => sum + item);
+    final stroke = size.width * 0.12;
+    final rect = Offset.zero & size;
+    final basePaint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..color = const Color(0xFFE8ECF5);
+    canvas.drawArc(
+      rect.deflate(stroke / 2),
+      -math.pi / 2,
+      math.pi * 2,
+      false,
+      basePaint,
+    );
+
+    if (total <= 0) return;
+
+    var start = -math.pi / 2;
+    for (var i = 0; i < values.length; i++) {
+      final sweep = (values[i] / total) * math.pi * 2;
+      final paint =
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = stroke
+            ..color = colors[i % colors.length];
+      canvas.drawArc(rect.deflate(stroke / 2), start, sweep, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingChartPainter oldDelegate) {
+    return oldDelegate.values != values || oldDelegate.colors != colors;
+  }
+}
