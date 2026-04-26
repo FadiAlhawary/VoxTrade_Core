@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
+import 'package:financial_chart/financial_chart.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:financial_chart/financial_chart.dart';
 import 'package:voxtrade_core/Models/LiveCandle.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
@@ -15,7 +18,13 @@ class LiveMarketChart extends StatefulWidget {
 }
 
 class _LiveMarketChartState extends State<LiveMarketChart> {
-  _ChartType _selected = _ChartType.candles;
+  late _ChartType _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = _defaultChartTypeForSymbol(widget.symbol);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +51,12 @@ class _LiveMarketChartState extends State<LiveMarketChart> {
           children: [
             Expanded(
               child: Obx(() {
+                if (_selected == _ChartType.candlesFl) {
+                  return _FlCandlestickLiveChart(
+                    key: const ValueKey('fl_candles'),
+                    candles: List<LiveCandle>.from(controller.candles),
+                  );
+                }
                 final chartData = buildChartData(controller.candles);
                 return _LiveChartView(
                   key: ValueKey(_selected),
@@ -143,11 +158,37 @@ class _LiveMarketChartState extends State<LiveMarketChart> {
   }
 }
 
-enum _ChartType { candles, ohlc, line, area, bar }
+/// Matches forex inference in [MarketViewrCard] (`_inferMarketType`).
+bool _chartSymbolIsForex(String symbol) {
+  final raw =
+      symbol.contains(':') ? symbol.split(':').last : symbol.toUpperCase();
+  final exchange =
+      symbol.contains(':') ? symbol.split(':').first.toUpperCase() : '';
+  const knownEquities = {'AAPL', 'NVDA', 'ZM', 'MSFT'};
+  if (knownEquities.contains(raw)) return false;
+  if (exchange == 'BINANCE' ||
+      raw.contains('BTC') ||
+      raw.contains('ETH') ||
+      raw.endsWith('USDT')) {
+    return false;
+  }
+  if (exchange == 'OANDA' || raw.contains('_') || raw.contains('/')) {
+    return true;
+  }
+  return false;
+}
+
+_ChartType _defaultChartTypeForSymbol(String symbol) {
+  if (_chartSymbolIsForex(symbol)) return _ChartType.line;
+  return _ChartType.candlesFl;
+}
+
+enum _ChartType { candles, candlesFl, ohlc, line, area, bar }
 
 extension _ChartTypeUi on _ChartType {
   String get chartTitle => switch (this) {
     _ChartType.candles => 'Candles',
+    _ChartType.candlesFl => 'Candles FL',
     _ChartType.ohlc => 'OHLC bars',
     _ChartType.line => 'Line',
     _ChartType.area => 'Area',
@@ -156,6 +197,7 @@ extension _ChartTypeUi on _ChartType {
 
   IconData get chartIcon => switch (this) {
     _ChartType.candles => Icons.candlestick_chart_rounded,
+    _ChartType.candlesFl => Icons.multiline_chart_rounded,
     _ChartType.ohlc => Icons.view_week_rounded,
     _ChartType.line => Icons.show_chart_rounded,
     _ChartType.area => Icons.stacked_line_chart,
@@ -285,6 +327,12 @@ class _LiveChartViewState extends State<_LiveChartView>
           ohlcValueKeys: const ['open', 'high', 'low', 'close'],
           drawAsCandle: true,
         );
+      case _ChartType.candlesFl:
+        // Rendered by [_FlCandlestickLiveChart], not [GChart].
+        return GGraphOhlc(
+          ohlcValueKeys: const ['open', 'high', 'low', 'close'],
+          drawAsCandle: true,
+        );
       case _ChartType.ohlc:
         return GGraphOhlc(
           ohlcValueKeys: const ['open', 'high', 'low', 'close'],
@@ -306,6 +354,7 @@ class _LiveChartViewState extends State<_LiveChartView>
   List<String> _valueKeysForType(_ChartType type) {
     switch (type) {
       case _ChartType.candles:
+      case _ChartType.candlesFl:
       case _ChartType.ohlc:
         return const ['high', 'low'];
       case _ChartType.line:
@@ -314,5 +363,185 @@ class _LiveChartViewState extends State<_LiveChartView>
       case _ChartType.bar:
         return const ['volume'];
     }
+  }
+}
+
+/// Live OHLC feed as candlesticks using [fl_chart] (see fl_chart candlestick sample).
+class _FlCandlestickLiveChart extends StatelessWidget {
+  const _FlCandlestickLiveChart({super.key, required this.candles});
+
+  final List<LiveCandle> candles;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (candles.isEmpty) {
+      return Center(
+        child: Text(
+          'Waiting for chart data…',
+          style: TextStyle(color: scheme.onSurfaceVariant),
+        ),
+      );
+    }
+
+    final gridLine = FlLine(
+      color: scheme.outline.withValues(alpha: 0.35),
+      strokeWidth: 0.4,
+      dashArray: const [8, 4],
+    );
+
+    final spots =
+        candles.asMap().entries.map((e) {
+          final c = e.value;
+          return CandlestickSpot(
+            x: e.key.toDouble(),
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          );
+        }).toList();
+
+    final maxX = math.max((candles.length - 1).toDouble(), 1.0);
+    final labelEvery = math.max(1, (candles.length / 6).ceil());
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 18),
+        child: CandlestickChart(
+          CandlestickChartData(
+            candlestickSpots: spots,
+            candlestickPainter: DefaultCandlestickPainter(
+              candlestickStyleProvider: (spot, _) {
+                final up = spot.open <= spot.close;
+                final color = up ? scheme.primary : scheme.error;
+                return CandlestickStyle(
+                  lineColor: color,
+                  lineWidth: 1.2,
+                  bodyStrokeColor: color,
+                  bodyStrokeWidth: 0,
+                  bodyFillColor: color,
+                  bodyWidth: 5,
+                  bodyRadius: 0,
+                );
+              },
+            ),
+            minX: 0,
+            maxX: maxX,
+            gridData: FlGridData(
+              show: true,
+              getDrawingHorizontalLine: (_) => gridLine,
+              getDrawingVerticalLine: (_) => gridLine,
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              leftTitles: AxisTitles(
+                drawBelowEverything: true,
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  maxIncluded: false,
+                  minIncluded: false,
+                  reservedSize: 56,
+                  getTitlesWidget: (value, meta) => SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      meta.formattedValue,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                axisNameWidget: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    'Time',
+                    style: TextStyle(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                axisNameSize: 28,
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 32,
+                  maxIncluded: false,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final i = value.toInt();
+                    if (i < 0 || i >= candles.length) {
+                      return const SizedBox.shrink();
+                    }
+                    if (i % labelEvery != 0 && i != candles.length - 1) {
+                      return const SizedBox.shrink();
+                    }
+                    final t = candles[i].time;
+                    final d = DateTime.fromMillisecondsSinceEpoch(t);
+                    final label =
+                        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+                    return SideTitleWidget(
+                      meta: meta,
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: scheme.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            touchedPointIndicator: AxisSpotIndicator(
+              painter: AxisLinesIndicatorPainter(
+                verticalLineProvider: (x) {
+                  final idx = x.round().clamp(0, candles.length - 1);
+                  final c = candles[idx];
+                  final up = c.open < c.close;
+                  return VerticalLine(
+                    x: x,
+                    color: (up ? scheme.primary : scheme.error).withValues(
+                      alpha: 0.45,
+                    ),
+                    strokeWidth: 1,
+                  );
+                },
+                horizontalLineProvider: (y) => HorizontalLine(
+                  y: y,
+                  label: HorizontalLineLabel(
+                    show: true,
+                    style: TextStyle(
+                      color: scheme.tertiary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    labelResolver: (hLine) =>
+                        hLine.y.toStringAsFixed(hLine.y.abs() >= 100 ? 1 : 4),
+                    alignment: Alignment.topLeft,
+                  ),
+                  color: scheme.tertiary.withValues(alpha: 0.85),
+                  strokeWidth: 1,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

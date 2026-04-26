@@ -982,7 +982,9 @@ enum _ChartDisplayType { area, line, bar }
 
 List<InstrumentDTO> _instrumentsForDropdown(List<InstrumentDTO> all) {
   if (all.length <= 1) return all;
-  final btcIndex = all.indexWhere(InstrumentController.matchesBitcoinInstrument);
+  final btcIndex = all.indexWhere(
+    InstrumentController.matchesBitcoinInstrument,
+  );
   if (btcIndex <= 0) return all;
   final out = List<InstrumentDTO>.from(all);
   final btc = out.removeAt(btcIndex);
