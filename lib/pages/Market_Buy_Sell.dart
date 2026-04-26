@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
+import 'package:voxtrade_core/Components/ModelDto/InstrumentDTO.dart';
 import 'package:voxtrade_core/Models/LiveCandle.dart';
 import 'package:voxtrade_core/Components/common/TextField/TextBoxField.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
@@ -48,8 +49,8 @@ class MarketBuySell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final instrument = _instrumentController.getInstrumentById(instrumentId);
-      final instruments = _instrumentController.instruments.toList(
-        growable: false,
+      final instruments = _instrumentsForDropdown(
+        _instrumentController.instruments.toList(growable: false),
       );
       final symbol = instrument.symbol;
       if (!Get.isRegistered<MarketChartController>(tag: symbol)) {
@@ -978,3 +979,12 @@ class _TrendPainter extends CustomPainter {
 enum _OrderType { market, limit }
 
 enum _ChartDisplayType { area, line, bar }
+
+List<InstrumentDTO> _instrumentsForDropdown(List<InstrumentDTO> all) {
+  if (all.length <= 1) return all;
+  final btcIndex = all.indexWhere(InstrumentController.matchesBitcoinInstrument);
+  if (btcIndex <= 0) return all;
+  final out = List<InstrumentDTO>.from(all);
+  final btc = out.removeAt(btcIndex);
+  return <InstrumentDTO>[btc, ...out];
+}

@@ -3,14 +3,18 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/ModelDto/PortfolioPositionDto.dart';
+import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/Components/cards/order_card.dart';
 import 'package:voxtrade_core/Components/cards/trade_card.dart';
+import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/NavBarController.dart';
 import 'package:voxtrade_core/assembler/Controller/PortfolioController.dart';
 import 'package:voxtrade_core/assembler/Controller/OrderHistory.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/TradeHistoryController.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
+import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
 
 class PortfolioPage extends StatefulWidget {
   const PortfolioPage({super.key});
@@ -443,7 +447,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               ),
               const Spacer(),
               FilledButton.icon(
-                onPressed: () {},
+                onPressed: _openBuySellAddInstrument,
                 style: FilledButton.styleFrom(
                   backgroundColor: cs.primary,
                   foregroundColor: Colors.white,
@@ -471,56 +475,64 @@ class _PortfolioPageState extends State<PortfolioPage>
           ),
           const SizedBox(height: 8),
           ...positions.map(
-            (item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      item.short_name.isNotEmpty
-                          ? item.short_name
-                          : item.symbol,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w600,
+            (item) => Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _openBuySellSellPosition(item.instrumentId),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          item.short_name.isNotEmpty
+                              ? item.short_name
+                              : item.symbol,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          _money(_liveMarketValue(item)),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          _money(
+                            (item.quantity * _effectivePrice(item) * 0.32)
+                                .abs(),
+                          ),
+                          textAlign: TextAlign.end,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          _money(_liveUnrealizedPnl(item).abs()),
+                          textAlign: TextAlign.end,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: _pnlColor(_liveUnrealizedPnl(item)),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      _money(_liveMarketValue(item)),
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      _money(
-                        (item.quantity * _effectivePrice(item) * 0.32).abs(),
-                      ),
-                      textAlign: TextAlign.end,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      _money(_liveUnrealizedPnl(item).abs()),
-                      textAlign: TextAlign.end,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: _pnlColor(_liveUnrealizedPnl(item)),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1226,6 +1238,36 @@ class _PortfolioPageState extends State<PortfolioPage>
 
   Color _pnlColor(double pnl) {
     return pnl >= 0 ? const Color(0xFF00C16A) : const Color(0xFFE2525C);
+  }
+
+  Future<void> _openBuySellAddInstrument() async {
+    final InstrumentController instrumentController =
+        Get.find<InstrumentController>();
+    if (instrumentController.instruments.isEmpty) {
+      await instrumentController.fetchInstruments();
+    }
+    if (instrumentController.instruments.isEmpty) {
+      SnackBarComp.show(
+        'No markets available right now.',
+        title: 'Markets',
+        status: SnackBarCompStatus.warning,
+      );
+      return;
+    }
+    final int id = instrumentController.resolveDefaultTradeInstrumentId();
+    Get.to(
+      () => MarketBuySell(instrumentId: id, initialIsBuy: true),
+      preventDuplicates: false,
+      transition: Transition.rightToLeft,
+    );
+  }
+
+  void _openBuySellSellPosition(int instrumentId) {
+    Get.to(
+      () => MarketBuySell(instrumentId: instrumentId, initialIsBuy: false),
+      preventDuplicates: false,
+      transition: Transition.rightToLeft,
+    );
   }
 }
 

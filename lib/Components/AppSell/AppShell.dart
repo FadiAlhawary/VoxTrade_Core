@@ -63,9 +63,10 @@ class AppShell extends StatelessWidget {
             return;
           }
 
-          final firstInstrumentId = instrumentController.instruments.first.id;
+          final defaultId =
+              instrumentController.resolveDefaultTradeInstrumentId();
           Get.to(
-            () => MarketBuySell(instrumentId: firstInstrumentId),
+            () => MarketBuySell(instrumentId: defaultId),
             preventDuplicates: false,
             transition: Transition.rightToLeft,
           );
