@@ -36,6 +36,9 @@ class _PortfolioPageState extends State<PortfolioPage>
   final Map<String, MarketChartController> _symbolControllers = {};
   final Set<String> _ownedControllers = <String>{};
   int _selectedTabIndex = 0;
+  static const int _historyInitialCount = 8;
+  int _visibleOrdersCount = _historyInitialCount;
+  int _visibleTradesCount = _historyInitialCount;
   String _selectedAccount = 'Primary';
   String _selectedPortfolio = 'Growth';
   int _assetScope = 5;
@@ -94,7 +97,6 @@ class _PortfolioPageState extends State<PortfolioPage>
         return Obx(() {
           final isDarkMode = _themeController.isDarkMode.value;
           final cs = Theme.of(context).colorScheme;
-          final textTheme = Theme.of(context).textTheme;
           final positions = _portfolioController.portfolio;
           final isLoading = _portfolioController.isLoading.value;
           _syncLivePriceControllers(positions);
@@ -868,6 +870,7 @@ class _PortfolioPageState extends State<PortfolioPage>
   Widget _buildOrdersTab(BuildContext context) {
     return Obx(() {
       final cs = Theme.of(context).colorScheme;
+      final textTheme = Theme.of(context).textTheme;
       if (_orderHistoryController.isLoading.value &&
           _orderHistoryController.orders.isEmpty) {
         return ListView(
@@ -875,8 +878,14 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
-            const SizedBox(height: 16),
-            const Center(child: CircularProgressIndicator()),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Orders',
+              subtitle: 'Latest order activity',
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(5, (_) => _historyShimmerCard()),
           ],
         );
       }
@@ -888,6 +897,12 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Orders',
+              subtitle: 'Latest order activity',
+            ),
             const SizedBox(height: 24),
             Icon(
               Icons.cloud_off_outlined,
@@ -899,9 +914,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               _orderHistoryController.errorMessage.value ??
                   'Failed to load orders',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         );
@@ -913,6 +926,12 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Orders',
+              subtitle: 'Latest order activity',
+            ),
             const SizedBox(height: 24),
             Icon(
               Icons.receipt_long_outlined,
@@ -931,18 +950,46 @@ class _PortfolioPageState extends State<PortfolioPage>
         );
       }
 
+      final orders = _orderHistoryController.orders;
+      final visibleCount = math.min(_visibleOrdersCount, orders.length);
+      final visibleOrders = orders.take(visibleCount).toList();
+      final hasMore = orders.length > visibleCount;
+
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
         children: [
           _buildSectionTabs(context, _portfolioController.portfolio.length),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          _buildHistoryHeader(
+            context,
+            title: 'Orders',
+            subtitle: 'Most recent first',
+          ),
+          const SizedBox(height: 10),
           OrderHistoryTable(
-            orders: _orderHistoryController.orders,
+            orders: visibleOrders,
             onCancelPending: (o) => _orderHistoryController.cancelOrder(o),
             isCancelling:
                 (id) => _orderHistoryController.cancellingOrderId.value == id,
           ),
+          if (hasMore) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  setState(() {
+                    _visibleOrdersCount = math.min(
+                      _visibleOrdersCount + _historyInitialCount,
+                      orders.length,
+                    );
+                  });
+                },
+                icon: const Icon(Icons.expand_more_rounded),
+                label: const Text('Show More Orders'),
+              ),
+            ),
+          ],
         ],
       );
     });
@@ -951,6 +998,7 @@ class _PortfolioPageState extends State<PortfolioPage>
   Widget _buildHistoryTab(BuildContext context) {
     return Obx(() {
       final cs = Theme.of(context).colorScheme;
+      final textTheme = Theme.of(context).textTheme;
       if (_tradeHistoryController.isLoading.value &&
           _tradeHistoryController.trades.isEmpty) {
         return ListView(
@@ -958,8 +1006,14 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
-            const SizedBox(height: 16),
-            const Center(child: CircularProgressIndicator()),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Trades',
+              subtitle: 'Execution and performance history',
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(5, (_) => _historyShimmerCard()),
           ],
         );
       }
@@ -971,6 +1025,12 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Trades',
+              subtitle: 'Execution and performance history',
+            ),
             const SizedBox(height: 24),
             Icon(
               Icons.cloud_off_outlined,
@@ -982,9 +1042,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               _tradeHistoryController.errorMessage.value ??
                   'Failed to load trade history',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         );
@@ -996,6 +1054,12 @@ class _PortfolioPageState extends State<PortfolioPage>
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
           children: [
             _buildSectionTabs(context, _portfolioController.portfolio.length),
+            const SizedBox(height: 14),
+            _buildHistoryHeader(
+              context,
+              title: 'Trades',
+              subtitle: 'Execution and performance history',
+            ),
             const SizedBox(height: 24),
             Icon(
               Icons.swap_horiz_rounded,
@@ -1014,16 +1078,103 @@ class _PortfolioPageState extends State<PortfolioPage>
         );
       }
 
+      final trades = _tradeHistoryController.trades;
+      final visibleCount = math.min(_visibleTradesCount, trades.length);
+      final visibleTrades = trades.take(visibleCount).toList();
+      final hasMore = trades.length > visibleCount;
+
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
         children: [
           _buildSectionTabs(context, _portfolioController.portfolio.length),
-          const SizedBox(height: 12),
-          TradeHistoryTable(trades: _tradeHistoryController.trades),
+          const SizedBox(height: 14),
+          _buildHistoryHeader(
+            context,
+            title: 'Trades',
+            subtitle: 'Most recent first',
+          ),
+          const SizedBox(height: 10),
+          TradeHistoryTable(trades: visibleTrades),
+          if (hasMore) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  setState(() {
+                    _visibleTradesCount = math.min(
+                      _visibleTradesCount + _historyInitialCount,
+                      trades.length,
+                    );
+                  });
+                },
+                icon: const Icon(Icons.expand_more_rounded),
+                label: const Text('Show More Trades'),
+              ),
+            ),
+          ],
         ],
       );
     });
+  }
+
+  Widget _buildHistoryHeader(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.history_rounded, color: cs.primary, size: 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _historyShimmerCard() {
+    final isDarkMode = _themeController.isDarkMode.value;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _shimmer(
+        child: Container(
+          height: 106,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildSectionTabs(BuildContext context, int positionsCount) {
@@ -1049,7 +1200,10 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'Orders',
               isSelected: _selectedTabIndex == 1,
-              onTap: () => setState(() => _selectedTabIndex = 1),
+              onTap: () => setState(() {
+                _selectedTabIndex = 1;
+                _visibleOrdersCount = _historyInitialCount;
+              }),
             ),
           ),
           Expanded(
@@ -1057,7 +1211,10 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'History',
               isSelected: _selectedTabIndex == 2,
-              onTap: () => setState(() => _selectedTabIndex = 2),
+              onTap: () => setState(() {
+                _selectedTabIndex = 2;
+                _visibleTradesCount = _historyInitialCount;
+              }),
             ),
           ),
         ],
