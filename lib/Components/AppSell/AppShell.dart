@@ -12,6 +12,7 @@ import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
 import 'package:voxtrade_core/pages/Wallet.dart';
 import 'package:voxtrade_core/pages/Portfolio_Page.dart';
 import 'package:voxtrade_core/pages/User_Info_Page.dart';
+import 'package:voxtrade_core/pages/Voice_Trading_Page.dart';
 
 import '../../assembler/Controller/NavBarController.dart';
 import '../../pages/Markets.dart';
@@ -313,7 +314,11 @@ class AppShell extends StatelessWidget {
               isDarkMode: isDarkMode,
               onTabTap: conroller.changeTabIndex,
               onCenterTap: () {
-                SnackBarComp.show('Voice action tapped');
+                Get.to(
+                  () => const VoiceTradingPage(),
+                  preventDuplicates: false,
+                  transition: Transition.downToUp,
+                );
               },
             ),
           );
