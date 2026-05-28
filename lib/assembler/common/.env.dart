@@ -1,3 +1,3 @@
 class ENV {
-  static const apiBaseUrl = "http://192.168.10.142:5150";
+  static const apiBaseUrl = "http://192.168.18.175:5150";
 }
