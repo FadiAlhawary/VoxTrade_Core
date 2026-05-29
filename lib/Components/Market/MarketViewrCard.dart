@@ -15,6 +15,8 @@ class MarketChartTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final controller = Get.put(
       MarketChartController(instrument.symbol),
       tag: instrument.symbol,
@@ -42,12 +44,19 @@ class MarketChartTile extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            color: const Color(0xFF1F2C46),
+            color:
+                isDark
+                    ? const Color(0xFF1F2C46)
+                    : scheme.surfaceContainerHigh,
             border: Border.all(
               color:
                   initialIsOpen
-                      ? const Color(0xFF2C3C5D)
-                      : const Color(0xFF5A6785),
+                      ? (isDark
+                          ? const Color(0xFF2C3C5D)
+                          : scheme.primary.withValues(alpha: 0.35))
+                      : (isDark
+                          ? const Color(0xFF5A6785)
+                          : scheme.outlineVariant),
               width: 1,
             ),
           ),
@@ -78,7 +87,22 @@ class MarketChartTile extends StatelessWidget {
                 final isUp = delta >= 0;
                 final changeColor =
                     isUp ? const Color(0xFF34D399) : const Color(0xFFF87171);
-                final mutedText = const Color(0xFF97A6C9);
+                final mutedText =
+                    isDark
+                        ? const Color(0xFF97A6C9)
+                        : scheme.onSurfaceVariant;
+                final titleColor =
+                    isDark
+                        ? (isOpen
+                            ? const Color(0xFFEFF4FF)
+                            : const Color(0xFFCCD5E9))
+                        : (isOpen ? scheme.onSurface : scheme.onSurfaceVariant);
+                final priceColor =
+                    isOpen
+                        ? (isDark ? Colors.white : scheme.onSurface)
+                        : (isDark
+                            ? const Color(0xFF7D8AA8)
+                            : scheme.onSurfaceVariant);
 
                 return Row(
                   children: [
@@ -95,10 +119,7 @@ class MarketChartTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color:
-                                  isOpen
-                                      ? const Color(0xFFEFF4FF)
-                                      : const Color(0xFFCCD5E9),
+                              color: titleColor,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                               height: 1.1,
@@ -124,7 +145,7 @@ class MarketChartTile extends StatelessWidget {
                         painter: _SparklinePainter(
                           values: sparkline,
                           strokeColor:
-                              isOpen ? changeColor : const Color(0xFF7D8AA8),
+                              isOpen ? changeColor : priceColor,
                         ),
                       ),
                     ),
@@ -188,7 +209,7 @@ class MarketChartTile extends StatelessWidget {
                           '\$${lastPrice.toStringAsFixed(2)}',
                           style: TextStyle(
                             color:
-                                isOpen ? Colors.white : const Color(0xFFD3DAEC),
+                                priceColor,
                             fontWeight: FontWeight.w800,
                             fontSize: 24,
                             letterSpacing: -0.4,

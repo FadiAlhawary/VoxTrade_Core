@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:voxtrade_core/assembler/Services/voice_audio_level.dart';
+
 class RecordedAudio {
   RecordedAudio({
     required this.bytes,
@@ -14,6 +16,8 @@ class RecordedAudio {
 
 class VoiceRecorder {
   bool get isRecording => false;
+
+  Stream<VoiceAudioLevel>? get audioLevelStream => null;
 
   Future<void> start() async {
     throw UnsupportedError(

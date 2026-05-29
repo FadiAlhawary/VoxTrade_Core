@@ -14,7 +14,9 @@ import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/TradeHistoryController.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'package:voxtrade_core/Components/shimer/themed_shimmer.dart';
 import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
+import 'package:voxtrade_core/utils/shimmer_theme.dart';
 
 class PortfolioPage extends StatefulWidget {
   const PortfolioPage({super.key});
@@ -165,7 +167,7 @@ class _PortfolioPageState extends State<PortfolioPage>
   }) {
     if (_selectedTabIndex == 0) {
       if (isLoading && positions.isEmpty) {
-        return _buildLoadingState(isDarkMode);
+        return _buildLoadingState(context);
       }
       return _buildPositionsContent(
         context: context,
@@ -469,10 +471,10 @@ class _PortfolioPageState extends State<PortfolioPage>
           const SizedBox(height: 12),
           Row(
             children: [
-              _headerCell(context, 'Assets', flex: 3),
-              _headerCell(context, 'Volume', flex: 2),
-              _headerCell(context, 'Risk', flex: 2, alignEnd: true),
-              _headerCell(context, 'myRisk', flex: 2, alignEnd: true),
+              _headerCell(context, 'Assets', flex: 2),
+              _headerCell(context, 'Volume', flex: 3),
+              _headerCell(context, 'Risk', flex: 3, alignEnd: true),
+              _headerCell(context, 'myRisk', flex: 3, alignEnd: true),
             ],
           ),
           const SizedBox(height: 8),
@@ -487,49 +489,45 @@ class _PortfolioPageState extends State<PortfolioPage>
                   child: Row(
                     children: [
                       Expanded(
-                        flex: 3,
+                        flex: 2,
                         child: Text(
                           item.short_name.isNotEmpty
                               ? item.short_name
                               : item.symbol,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                           style: textTheme.bodyMedium?.copyWith(
                             color: cs.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          _money(_liveMarketValue(item)),
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      _moneyCell(
+                        flex: 3,
+                        value: _money(_liveMarketValue(item)),
+                        style: textTheme.bodyMedium!.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          _money(
-                            (item.quantity * _effectivePrice(item) * 0.32)
-                                .abs(),
-                          ),
-                          textAlign: TextAlign.end,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: cs.onSurface,
-                          ),
+                      _moneyCell(
+                        flex: 3,
+                        value: _money(
+                          (item.quantity * _effectivePrice(item) * 0.32)
+                              .abs(),
+                        ),
+                        textAlign: TextAlign.end,
+                        style: textTheme.bodyMedium!.copyWith(
+                          color: cs.onSurface,
                         ),
                       ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          _money(_liveUnrealizedPnl(item).abs()),
-                          textAlign: TextAlign.end,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: _pnlColor(_liveUnrealizedPnl(item)),
-                            fontWeight: FontWeight.w700,
-                          ),
+                      _moneyCell(
+                        flex: 3,
+                        value: _money(_liveUnrealizedPnl(item).abs()),
+                        textAlign: TextAlign.end,
+                        style: textTheme.bodyMedium!.copyWith(
+                          color: _pnlColor(_liveUnrealizedPnl(item)),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -555,9 +553,37 @@ class _PortfolioPageState extends State<PortfolioPage>
       child: Text(
         label,
         textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: muted,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _moneyCell({
+    required int flex,
+    required String value,
+    required TextStyle style,
+    TextAlign textAlign = TextAlign.start,
+  }) {
+    final alignment =
+        textAlign == TextAlign.end
+            ? Alignment.centerRight
+            : Alignment.centerLeft;
+    return Expanded(
+      flex: flex,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: alignment,
+        child: Text(
+          value,
+          textAlign: textAlign,
+          maxLines: 1,
+          softWrap: false,
+          style: style,
         ),
       ),
     );
@@ -581,6 +607,7 @@ class _PortfolioPageState extends State<PortfolioPage>
     List<PortfolioPositionDto> positions,
   ) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textTheme = Theme.of(context).textTheme;
     final total = positions.fold<double>(
       0,
@@ -624,6 +651,10 @@ class _PortfolioPageState extends State<PortfolioPage>
                   painter: _RingChartPainter(
                     values: chartItems.map((e) => _liveMarketValue(e)).toList(),
                     colors: palette,
+                    trackColor:
+                        isDark
+                            ? cs.outlineVariant.withValues(alpha: 0.35)
+                            : const Color(0xFFE8ECF5),
                   ),
                   child: Center(
                     child: Text(
@@ -885,7 +916,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               subtitle: 'Latest order activity',
             ),
             const SizedBox(height: 12),
-            ...List.generate(5, (_) => _historyShimmerCard()),
+            ...List.generate(5, (_) => _historyShimmerCard(context)),
           ],
         );
       }
@@ -1013,7 +1044,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               subtitle: 'Execution and performance history',
             ),
             const SizedBox(height: 12),
-            ...List.generate(5, (_) => _historyShimmerCard()),
+            ...List.generate(5, (_) => _historyShimmerCard(context)),
           ],
         );
       }
@@ -1161,16 +1192,16 @@ class _PortfolioPageState extends State<PortfolioPage>
     );
   }
 
-  Widget _historyShimmerCard() {
-    final isDarkMode = _themeController.isDarkMode.value;
+  Widget _historyShimmerCard(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: _shimmer(
+        context,
         child: Container(
           height: 106,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+            color: shimmerBaseColor(context),
           ),
         ),
       ),
@@ -1200,10 +1231,11 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'Orders',
               isSelected: _selectedTabIndex == 1,
-              onTap: () => setState(() {
-                _selectedTabIndex = 1;
-                _visibleOrdersCount = _historyInitialCount;
-              }),
+              onTap:
+                  () => setState(() {
+                    _selectedTabIndex = 1;
+                    _visibleOrdersCount = _historyInitialCount;
+                  }),
             ),
           ),
           Expanded(
@@ -1211,10 +1243,11 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'History',
               isSelected: _selectedTabIndex == 2,
-              onTap: () => setState(() {
-                _selectedTabIndex = 2;
-                _visibleTradesCount = _historyInitialCount;
-              }),
+              onTap:
+                  () => setState(() {
+                    _selectedTabIndex = 2;
+                    _visibleTradesCount = _historyInitialCount;
+                  }),
             ),
           ),
         ],
@@ -1304,17 +1337,18 @@ class _PortfolioPageState extends State<PortfolioPage>
     return (_effectivePrice(item) - item.averageCost) * item.quantity;
   }
 
-  Widget _buildLoadingState(bool isDarkMode) {
+  Widget _buildLoadingState(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
       children: [
         _shimmer(
+          context,
           child: Container(
             height: 195,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+              color: shimmerBaseColor(context),
             ),
           ),
         ),
@@ -1325,14 +1359,12 @@ class _PortfolioPageState extends State<PortfolioPage>
               child: Padding(
                 padding: EdgeInsets.only(right: i == 2 ? 0 : 10),
                 child: _shimmer(
+                  context,
                   child: Container(
                     height: 22,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      color:
-                          isDarkMode
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade300,
+                      color: shimmerBaseColor(context),
                     ),
                   ),
                 ),
@@ -1341,52 +1373,29 @@ class _PortfolioPageState extends State<PortfolioPage>
           }),
         ),
         const SizedBox(height: 14),
-        ...List.generate(6, (_) => _positionShimmerCard(isDarkMode)),
+        ...List.generate(6, (_) => _positionShimmerCard(context)),
       ],
     );
   }
 
-  Widget _positionShimmerCard(bool isDarkMode) {
+  Widget _positionShimmerCard(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: _shimmer(
+        context,
         child: Container(
           height: 78,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+            color: shimmerBaseColor(context),
           ),
         ),
       ),
     );
   }
 
-  Widget _shimmer({required Widget child}) {
-    return AnimatedBuilder(
-      animation: _shimmerAnimCtrl,
-      child: child,
-      builder: (context, widgetChild) {
-        final shimmerValue = _shimmerAnimCtrl.value;
-        final pulseOpacity =
-            0.86 + (0.14 * ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.25),
-              end: Alignment(-0.8 + (4.0 * shimmerValue), 0.25),
-              colors: [
-                Colors.white.withValues(alpha: 0.04),
-                Colors.white.withValues(alpha: 0.55),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-              stops: const [0.42, 0.5, 0.58],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcATop,
-          child: Opacity(opacity: pulseOpacity, child: widgetChild),
-        );
-      },
-    );
+  Widget _shimmer(BuildContext context, {required Widget child}) {
+    return ThemedShimmer(animation: _shimmerAnimCtrl, child: child);
   }
 
   String _money(double value) {
@@ -1429,10 +1438,15 @@ class _PortfolioPageState extends State<PortfolioPage>
 }
 
 class _RingChartPainter extends CustomPainter {
-  _RingChartPainter({required this.values, required this.colors});
+  _RingChartPainter({
+    required this.values,
+    required this.colors,
+    required this.trackColor,
+  });
 
   final List<double> values;
   final List<Color> colors;
+  final Color trackColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1443,7 +1457,7 @@ class _RingChartPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke
-          ..color = const Color(0xFFE8ECF5);
+          ..color = trackColor;
     canvas.drawArc(
       rect.deflate(stroke / 2),
       -math.pi / 2,
@@ -1470,6 +1484,8 @@ class _RingChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RingChartPainter oldDelegate) {
-    return oldDelegate.values != values || oldDelegate.colors != colors;
+    return oldDelegate.values != values ||
+        oldDelegate.colors != colors ||
+        oldDelegate.trackColor != trackColor;
   }
 }

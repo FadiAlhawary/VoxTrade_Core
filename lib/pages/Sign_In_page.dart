@@ -89,12 +89,23 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final _ = _themeController.isDarkMode.value;
-      final Color primary = Theme.of(context).colorScheme.primary;
-      final Color scaffoldBg = const Color(0xFF0D0F14);
-      final Color textColor = Colors.white;
-      final Color subTextColor = Colors.white.withValues(alpha: 0.65);
-      final Color hintColor = Colors.grey.shade500;
+      final isDark = _themeController.isDarkMode.value;
+      final scheme = Theme.of(context).colorScheme;
+      final Color primary = scheme.primary;
+      final Color scaffoldBg = isDark ? const Color(0xFF0D0F14) : scheme.surface;
+      final Color textColor = isDark ? Colors.white : scheme.onSurface;
+      final Color subTextColor =
+          isDark
+              ? Colors.white.withValues(alpha: 0.65)
+              : scheme.onSurfaceVariant;
+      final Color hintColor =
+          isDark ? Colors.grey.shade500 : scheme.onSurfaceVariant;
+      final Color inputFill =
+          isDark ? const Color(0xFF162235) : scheme.surfaceContainerHighest;
+      final Color inputBorder =
+          isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : scheme.outlineVariant.withValues(alpha: 0.6);
 
       return Scaffold(
         backgroundColor: scaffoldBg,
@@ -104,11 +115,17 @@ class _SignInPageState extends State<SignInPage> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF0B1220), Color(0xFF0F1B2E)],
+                    colors:
+                        isDark
+                            ? const [Color(0xFF0B1220), Color(0xFF0F1B2E)]
+                            : [
+                              scheme.surfaceContainerLow,
+                              scheme.surface,
+                            ],
                   ),
                 ),
                 child: Stack(
@@ -182,13 +199,11 @@ class _SignInPageState extends State<SignInPage> {
                                     data: Theme.of(context).copyWith(
                                       inputDecorationTheme: InputDecorationTheme(
                                         filled: true,
-                                        fillColor: const Color(0xFF162235),
+                                        fillColor: inputFill,
                                         hintStyle: TextStyle(color: hintColor),
                                         enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
-                                          borderSide: BorderSide(
-                                            color: Colors.white.withValues(alpha: 0.08),
-                                          ),
+                                          borderSide: BorderSide(color: inputBorder),
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
@@ -196,7 +211,10 @@ class _SignInPageState extends State<SignInPage> {
                                         ),
                                       ),
                                       iconTheme: IconThemeData(
-                                        color: Colors.white.withValues(alpha: 0.82),
+                                        color:
+                                            isDark
+                                                ? Colors.white.withValues(alpha: 0.82)
+                                                : scheme.onSurfaceVariant,
                                       ),
                                     ),
                                     child: Column(

@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:voxtrade_core/Components/ModelDto/WalletHistoryDTO.dart';
 import 'package:voxtrade_core/Components/shimer/WalletHistoryChartShimer.dart';
+import 'package:voxtrade_core/utils/chart_theme_helpers.dart';
 
 class WalletHistoryChart extends StatelessWidget {
   final List<WalletHistoryDto> history;
@@ -37,9 +38,9 @@ class WalletHistoryChart extends StatelessWidget {
     };
   }
 
-  Widget getTitles(double value, TitleMeta meta, int length) {
-    final style = const TextStyle(
-      color: Colors.white70,
+  Widget getTitles(double value, TitleMeta meta, int length, Color axisColor) {
+    final style = TextStyle(
+      color: axisColor,
       fontWeight: FontWeight.w600,
       fontSize: 11,
     );
@@ -56,24 +57,19 @@ class WalletHistoryChart extends StatelessWidget {
     );
   }
 
-  FlTitlesData titlesData(int length) => FlTitlesData(
+  FlTitlesData titlesData(int length, Color axisColor) => FlTitlesData(
     show: true,
     bottomTitles: AxisTitles(
       sideTitles: SideTitles(
         showTitles: true,
         reservedSize: 30,
         interval: (length / 7).ceil().toDouble().clamp(1, 1000000),
-        getTitlesWidget: (value, meta) => getTitles(value, meta, length),
+        getTitlesWidget: (value, meta) => getTitles(value, meta, length, axisColor),
       ),
     ),
     leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-  );
-
-  FlBorderData get borderData => FlBorderData(
-    show: true,
-    border: Border.all(color: const Color(0xff2e3a46)),
   );
 
   LinearGradient get _addBarsGradient => LinearGradient(
@@ -190,26 +186,15 @@ class WalletHistoryChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final mutedText = dashboardChartMutedText(context);
+    final gridColor = dashboardChartGridLine(context);
+    final borderColor = dashboardChartBorder(context);
     final chartValues = _buildDailyFlows(history, fromDate, toDate);
     final hasChartData = chartValues.any(
       (entry) => entry.received > 0 || entry.spent > 0,
     );
-    final cardDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
-      gradient: const LinearGradient(
-        colors: [Color(0xff111821), Color(0xff0b1118)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      border: Border.all(color: const Color(0xff273443)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color.fromRGBO(0, 0, 0, 0.25),
-          blurRadius: 12,
-          offset: Offset(0, 6),
-        ),
-      ],
-    );
+    final cardDecoration = dashboardChartCardDecoration(context);
 
     if (isLoading) {
       return WalletHistoryChartShimer(title: title, onRefresh: onRefresh);
@@ -217,7 +202,12 @@ class WalletHistoryChart extends StatelessWidget {
     if (!hasChartData) {
       return Container(
         decoration: cardDecoration,
-        child: const Center(child: Text('No wallet history in selected range')),
+        child: Center(
+          child: Text(
+            'No wallet history in selected range',
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
+        ),
       );
     }
 
@@ -250,14 +240,17 @@ class WalletHistoryChart extends StatelessWidget {
                     title!,
                     style: Theme.of(
                       context,
-                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
                   ),
                 ),
                 IconButton(
                   onPressed: onRefresh,
                   icon: const Icon(Icons.refresh_rounded, size: 20),
                   tooltip: 'Refresh',
-                  color: Colors.white70,
+                  color: mutedText,
                   splashRadius: 20,
                 ),
               ],
@@ -270,7 +263,7 @@ class WalletHistoryChart extends StatelessWidget {
                 onPressed: onRefresh,
                 icon: const Icon(Icons.refresh_rounded, size: 20),
                 tooltip: 'Refresh',
-                color: Colors.white70,
+                color: mutedText,
                 splashRadius: 20,
               ),
             ),
@@ -314,18 +307,18 @@ class WalletHistoryChart extends StatelessWidget {
                 curve: Curves.easeOutQuad,
                 BarChartData(
                   barTouchData: barTouchData,
-                  titlesData: titlesData(chartValues.length),
-                  borderData: borderData,
+                  titlesData: titlesData(chartValues.length, mutedText),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: borderColor),
+                  ),
                   barGroups: _buildBarGroups(chartValues),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
                     horizontalInterval: (dynamicMaxY / 4).clamp(1, 1000000),
                     getDrawingHorizontalLine:
-                        (value) => const FlLine(
-                          color: Color(0xff263341),
-                          strokeWidth: 0.7,
-                        ),
+                        (value) => FlLine(color: gridColor, strokeWidth: 0.7),
                   ),
                   alignment: BarChartAlignment.spaceAround,
                   maxY: dynamicMaxY,
@@ -355,7 +348,10 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: Colors.white70)),
+        Text(
+          label,
+          style: TextStyle(color: dashboardChartMutedText(context)),
+        ),
       ],
     );
   }
@@ -386,9 +382,9 @@ class _MetricPill extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: Colors.white70,
+                color: dashboardChartMutedText(context),
                 fontWeight: FontWeight.w500,
               ),
             ),

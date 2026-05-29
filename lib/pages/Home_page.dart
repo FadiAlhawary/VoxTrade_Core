@@ -12,31 +12,34 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              CustomTabBar(
-                tabs: [Tab(text: "Market News"), Tab(text: "Company News")],
-              ),
-
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    NewsCard(
-                      type: NewsType.market,
-                      newsController: newsController,
-                    ),
-                    NewsCard(
-                      type: NewsType.company,
-                      newsController: newsController,
-                    ),
-                  ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('News')),
+      body: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          body: SafeArea(
+            child: Column(
+              children: [
+                CustomTabBar(
+                  tabs: [Tab(text: "Market News"), Tab(text: "Company News")],
                 ),
-              ),
-            ],
+
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      NewsCard(
+                        type: NewsType.market,
+                        newsController: newsController,
+                      ),
+                      NewsCard(
+                        type: NewsType.company,
+                        newsController: newsController,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

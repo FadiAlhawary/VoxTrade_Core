@@ -323,6 +323,8 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -331,7 +333,10 @@ class _ActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xff111821) : Colors.white,
+            color:
+                isDark
+                    ? scheme.surfaceContainerHighest
+                    : scheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: accentColor.withValues(alpha: 0.4)),
           ),
@@ -353,23 +358,27 @@ class _ActionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
+                        color: scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

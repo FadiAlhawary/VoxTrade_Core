@@ -249,12 +249,23 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final _ = _themeController.isDarkMode.value;
-      final Color primary = Theme.of(context).colorScheme.primary;
-      final Color scaffoldBg = const Color(0xFF0D0F14);
-      final Color textColor = Colors.white;
-      final Color subTextColor = Colors.white.withValues(alpha: 0.65);
-      final Color hintColor = Colors.grey.shade500;
+      final isDark = _themeController.isDarkMode.value;
+      final scheme = Theme.of(context).colorScheme;
+      final Color primary = scheme.primary;
+      final Color scaffoldBg = isDark ? const Color(0xFF0D0F14) : scheme.surface;
+      final Color textColor = isDark ? Colors.white : scheme.onSurface;
+      final Color subTextColor =
+          isDark
+              ? Colors.white.withValues(alpha: 0.65)
+              : scheme.onSurfaceVariant;
+      final Color hintColor =
+          isDark ? Colors.grey.shade500 : scheme.onSurfaceVariant;
+      final Color inputFill =
+          isDark ? const Color(0xFF162235) : scheme.surfaceContainerHighest;
+      final Color inputBorder =
+          isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : scheme.outlineVariant.withValues(alpha: 0.6);
 
       return Scaffold(
         backgroundColor: scaffoldBg,
@@ -264,11 +275,17 @@ class _SignUpPageState extends State<SignUpPage> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF0B1220), Color(0xFF0F1B2E)],
+                    colors:
+                        isDark
+                            ? const [Color(0xFF0B1220), Color(0xFF0F1B2E)]
+                            : [
+                              scheme.surfaceContainerLow,
+                              scheme.surface,
+                            ],
                   ),
                 ),
                 child: Stack(
@@ -342,13 +359,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                     data: Theme.of(context).copyWith(
                                       inputDecorationTheme: InputDecorationTheme(
                                         filled: true,
-                                        fillColor: const Color(0xFF162235),
+                                        fillColor: inputFill,
                                         hintStyle: TextStyle(color: hintColor),
                                         enabledBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
-                                          borderSide: BorderSide(
-                                            color: Colors.white.withValues(alpha: 0.08),
-                                          ),
+                                          borderSide: BorderSide(color: inputBorder),
                                         ),
                                         focusedBorder: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(14),
@@ -360,7 +375,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                         ),
                                       ),
                                       iconTheme: IconThemeData(
-                                        color: Colors.white.withValues(alpha: 0.82),
+                                        color:
+                                            isDark
+                                                ? Colors.white.withValues(alpha: 0.82)
+                                                : scheme.onSurfaceVariant,
                                       ),
                                     ),
                                     child: Column(
@@ -435,8 +453,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                           child: TextField(
                                             controller: _dateOfBirthController,
                                             readOnly: true,
-                                            cursorColor: Colors.white,
-                                            style: const TextStyle(color: Colors.white),
+                                            cursorColor: textColor,
+                                            style: TextStyle(color: textColor),
                                             onTap: _pickDateOfBirth,
                                             decoration: InputDecoration(
                                               prefixIcon: const Icon(Icons.calendar_month_outlined),
@@ -444,12 +462,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                               hintStyle: TextStyle(color: hintColor),
                                               errorText: _dateOfBirthError,
                                               filled: true,
-                                              fillColor: const Color(0xFF162235),
+                                              fillColor: inputFill,
                                               enabledBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(14),
-                                                borderSide: BorderSide(
-                                                  color: Colors.white.withValues(alpha: 0.08),
-                                                ),
+                                                borderSide: BorderSide(color: inputBorder),
                                               ),
                                               focusedBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(14),
@@ -472,7 +488,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                                 RegExp(r'[0-9+\s\-\(\)]'),
                                               ),
                                             ],
-                                            style: const TextStyle(color: Colors.white),
+                                            style: TextStyle(color: textColor),
                                             onChanged: (_) {
                                               if (_phoneError != null) {
                                                 setState(() => _phoneError = null);
@@ -484,12 +500,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                               hintStyle: TextStyle(color: hintColor),
                                               errorText: _phoneError,
                                               filled: true,
-                                              fillColor: const Color(0xFF162235),
+                                              fillColor: inputFill,
                                               enabledBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(14),
-                                                borderSide: BorderSide(
-                                                  color: Colors.white.withValues(alpha: 0.08),
-                                                ),
+                                                borderSide: BorderSide(color: inputBorder),
                                               ),
                                               focusedBorder: OutlineInputBorder(
                                                 borderRadius: BorderRadius.circular(14),

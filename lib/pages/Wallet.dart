@@ -1,12 +1,11 @@
-import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Models/wallet_activity_models.dart';
 import 'package:voxtrade_core/assembler/Controller/NavBarController.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
+import 'package:voxtrade_core/Components/shimer/themed_shimmer.dart';
+import 'package:voxtrade_core/utils/shimmer_theme.dart';
 
 /// Hero gradient — blue tones; [Brightness.dark] uses deeper blues on dark surfaces.
 List<Color> _walletHeroGradientColors(Brightness brightness) {
@@ -112,7 +111,7 @@ class _WalletPageState extends State<WalletPage>
             body: SafeArea(
               child:
                   isLoading
-                      ? _buildWalletShimmer(theme)
+                      ? _buildWalletShimmer(context, theme)
                       : RefreshIndicator(
                         onRefresh: () => walletController.fetchWallet(),
                         color: colorScheme.primary,
@@ -332,12 +331,12 @@ class _WalletPageState extends State<WalletPage>
     );
   }
 
-  Widget _buildWalletShimmer(ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    final base = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+  Widget _buildWalletShimmer(BuildContext context, ThemeData theme) {
+    final base = shimmerBaseColor(context);
 
     Widget block(double h, {double radius = 14}) {
-      return _shimmer(
+      return ThemedShimmer(
+        animation: _shimmerAnimCtrl,
         child: Container(
           height: h,
           decoration: BoxDecoration(
@@ -381,33 +380,6 @@ class _WalletPageState extends State<WalletPage>
     );
   }
 
-  Widget _shimmer({required Widget child}) {
-    return AnimatedBuilder(
-      animation: _shimmerAnimCtrl,
-      child: child,
-      builder: (context, widgetChild) {
-        final shimmerValue = _shimmerAnimCtrl.value;
-        final pulseOpacity =
-            0.86 + (0.14 * ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.25),
-              end: Alignment(-0.8 + (4.0 * shimmerValue), 0.25),
-              colors: [
-                Colors.white.withValues(alpha: 0.04),
-                Colors.white.withValues(alpha: 0.55),
-                Colors.white.withValues(alpha: 0.04),
-              ],
-              stops: const [0.42, 0.5, 0.58],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.srcATop,
-          child: Opacity(opacity: pulseOpacity, child: widgetChild),
-        );
-      },
-    );
-  }
 }
 
 // —————————————————————————————————————————————————————————————————————
