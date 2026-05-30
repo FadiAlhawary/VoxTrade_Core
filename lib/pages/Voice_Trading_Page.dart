@@ -195,6 +195,10 @@ class _VoiceTradingPageState extends State<VoiceTradingPage> {
                         value: 'whisper-1',
                         child: Text('Classic (whisper-1)'),
                       ),
+                      DropdownMenuItem(
+                        value: 'gemini',
+                        child: Text('Gemini (gemini-2.5-flash)'),
+                      ),
                     ],
                     onChanged:
                         canInteract
