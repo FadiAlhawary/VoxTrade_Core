@@ -42,7 +42,7 @@ class _AppShellState extends State<AppShell>
   final VoiceCommandSettingsController _voiceSettings =
       Get.find<VoiceCommandSettingsController>();
   final VoiceSilenceMonitor _silenceMonitor = VoiceSilenceMonitor();
-  int? _voiceSilenceCountdown;
+  double? _voiceSilenceCountdown;
   bool _isVoiceListening = false;
   bool _isVoiceProcessing = false;
   bool _isExecutingVoiceOrder = false;
@@ -64,6 +64,12 @@ class _AppShellState extends State<AppShell>
     _edgeGlowController.dispose();
     _recorder.dispose();
     super.dispose();
+  }
+
+  String _formatVoiceCountdown(double seconds) {
+    return seconds == seconds.roundToDouble()
+        ? seconds.toInt().toString()
+        : seconds.toStringAsFixed(1);
   }
 
   Future<void> _onCenterMicTap() async {
@@ -875,7 +881,9 @@ class _AppShellState extends State<AppShell>
                                                   _voiceSilenceCountdown !=
                                                       null) ...[
                                                 Text(
-                                                  '${_voiceSilenceCountdown!}',
+                                                  _formatVoiceCountdown(
+                                                    _voiceSilenceCountdown!,
+                                                  ),
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color:
@@ -895,7 +903,7 @@ class _AppShellState extends State<AppShell>
                                                 _isVoiceListening
                                                     ? (_voiceSilenceCountdown !=
                                                             null
-                                                        ? 'Finishing in $_voiceSilenceCountdown...'
+                                                        ? 'Finishing in ${_formatVoiceCountdown(_voiceSilenceCountdown!)}...'
                                                         : 'Listening to your order')
                                                     : 'Analyzing your command',
                                                 textAlign: TextAlign.center,
