@@ -28,6 +28,11 @@ class VoiceCommandSettingsController extends GetxController {
       title: 'Classic (whisper-1)',
       subtitle: 'Faster and lighter transcription for simple commands.',
     ),
+    VoiceSttModelOption(
+      id: 'gemini',
+      title: 'Gemini (gemini-2.5-flash)',
+      subtitle: 'Best accuracy for trading phrases and mixed language.',
+    ),
   ];
 
   final RxString selectedModelId = defaultModelId.obs;
