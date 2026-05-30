@@ -4,7 +4,8 @@ import 'package:voxtrade_core/Components/common/News/NewFliter.dart';
 import 'package:voxtrade_core/assembler/Controller/NewsController.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
-import 'dart:math' as math;
+import 'package:voxtrade_core/Components/shimer/themed_shimmer.dart';
+import 'package:voxtrade_core/utils/shimmer_theme.dart';
 
 class NewsCard extends StatefulWidget {
   final NewsType type;
@@ -125,11 +126,11 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
           child: Obx(() {
             if (widget.type == NewsType.market) {
               if (widget.newsController.isMarketNewsLoading.value) {
-                return _buildNewsShimmer(themeController);
+                return _buildNewsShimmer(context, themeController);
               }
             } else {
               if (widget.newsController.isCompanyNewsLoading.value) {
-                return _buildNewsShimmer(themeController);
+                return _buildNewsShimmer(context, themeController);
               }
             }
             if (widget.type == NewsType.market) {
@@ -204,50 +205,32 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildNewsShimmer(ThemeController themeController) {
+  Widget _buildNewsShimmer(
+    BuildContext context,
+    ThemeController themeController,
+  ) {
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 6,
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-          child: AnimatedBuilder(
+          child: ThemedShimmer(
             animation: _shimmerAnimCtrl,
-            builder: (context, child) {
-              final shimmerValue = _shimmerAnimCtrl.value;
-              final pulseOpacity =
-                  0.88 +
-                  (0.12 *
-                      ((math.sin(shimmerValue * 2 * math.pi) + 1) / 2));
-              return ShaderMask(
-                shaderCallback: (bounds) {
-                  return LinearGradient(
-                    begin: Alignment(-2.0 + (4.0 * shimmerValue), -0.2),
-                    end: Alignment(-0.8 + (4.0 * shimmerValue), 0.2),
-                    colors: [
-                      Colors.white.withValues(alpha: 0.04),
-                      Colors.white.withValues(alpha: 0.55),
-                      Colors.white.withValues(alpha: 0.04),
-                    ],
-                    stops: const [0.42, 0.5, 0.58],
-                  ).createShader(bounds);
-                },
-                blendMode: BlendMode.srcATop,
-                child: Opacity(opacity: pulseOpacity, child: child),
-              );
-            },
-            child: _buildShimmerCard(themeController),
+            child: _buildShimmerCard(context, themeController),
           ),
         );
       },
     );
   }
 
-  Widget _buildShimmerCard(ThemeController themeController) {
-    final baseColor =
-        themeController.isDarkMode.value
-            ? Colors.grey.shade800
-            : Colors.grey.shade300;
+  Widget _buildShimmerCard(
+    BuildContext context,
+    ThemeController themeController,
+  ) {
+    final isDark = themeController.isDarkMode.value;
+    final scheme = Theme.of(context).colorScheme;
+    final baseColor = shimmerBaseColor(context);
 
     return Card(
       elevation: 2,
@@ -256,7 +239,7 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color:
-              themeController.isDarkMode.value
+              isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.06),
         ),
@@ -264,10 +247,7 @@ class _NewsCardState extends State<NewsCard> with TickerProviderStateMixin {
       clipBehavior: Clip.antiAlias,
       child: Container(
         padding: const EdgeInsets.all(12),
-        color:
-            themeController.isDarkMode.value
-                ? Colors.grey.shade900
-                : Colors.white,
+        color: isDark ? scheme.surfaceContainerLow : scheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

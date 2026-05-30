@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
+import 'package:voxtrade_core/assembler/Controller/Voice_Command_Settings_Controller.dart';
 import 'package:voxtrade_core/assembler/Services/market_socket_service.dart';
 import 'package:voxtrade_core/routes/Routes.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
@@ -15,6 +16,7 @@ void main() async {
   await Get.putAsync(() => MarketSocketService().init());
   Get.put(ThemeController(), permanent: true);
   Get.put(UserController(), permanent: true);
+  Get.put(VoiceCommandSettingsController(), permanent: true);
 
   runApp(const MyApp());
 }

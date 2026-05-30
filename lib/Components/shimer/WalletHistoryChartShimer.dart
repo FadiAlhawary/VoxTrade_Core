@@ -1,23 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:voxtrade_core/Components/shimer/themed_shimmer.dart';
+import 'package:voxtrade_core/utils/chart_theme_helpers.dart';
 
-class WalletHistoryChartShimer extends StatelessWidget {
+class WalletHistoryChartShimer extends StatefulWidget {
   final String? title;
   final VoidCallback? onRefresh;
 
   const WalletHistoryChartShimer({super.key, this.title, this.onRefresh});
 
   @override
+  State<WalletHistoryChartShimer> createState() => _WalletHistoryChartShimerState();
+}
+
+class _WalletHistoryChartShimerState extends State<WalletHistoryChartShimer>
+    with SingleTickerProviderStateMixin {
+  static const _shimmerDuration = Duration(milliseconds: 950);
+  late final AnimationController _shimmerAnimCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerAnimCtrl = AnimationController(
+      vsync: this,
+      duration: _shimmerDuration,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerAnimCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final mutedText = dashboardChartMutedText(context);
+
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xff111821), Color(0xff0b1118)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xff273443)),
-      ),
+      decoration: dashboardChartCardDecoration(context),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -26,56 +47,55 @@ class WalletHistoryChartShimer extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  title ?? 'Wallet History',
+                  widget.title ?? 'Wallet History',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white70,
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
               IconButton(
-                onPressed: onRefresh,
+                onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh_rounded, size: 20),
-                color: Colors.white70,
+                color: mutedText,
                 tooltip: 'Refresh',
                 splashRadius: 20,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
-              Expanded(child: _ShimmerBlock(height: 42)),
-              SizedBox(width: 8),
-              Expanded(child: _ShimmerBlock(height: 42)),
-              SizedBox(width: 8),
-              Expanded(child: _ShimmerBlock(height: 42)),
+              Expanded(
+                child: ThemedShimmerBox(
+                  animation: _shimmerAnimCtrl,
+                  height: 42,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ThemedShimmerBox(
+                  animation: _shimmerAnimCtrl,
+                  height: 42,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ThemedShimmerBox(
+                  animation: _shimmerAnimCtrl,
+                  height: 42,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          const Expanded(child: _ShimmerBlock(height: double.infinity)),
+          Expanded(
+            child: ThemedShimmerBox(
+              animation: _shimmerAnimCtrl,
+              height: double.infinity,
+            ),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _ShimmerBlock extends StatelessWidget {
-  final double height;
-
-  const _ShimmerBlock({required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height == double.infinity ? null : height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        gradient: const LinearGradient(
-          colors: [Color(0xff1b2632), Color(0xff253242), Color(0xff1b2632)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
       ),
     );
   }

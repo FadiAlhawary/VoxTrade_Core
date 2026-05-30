@@ -7,10 +7,6 @@ import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 class WalletHistoryPage extends StatelessWidget {
   const WalletHistoryPage({super.key, this.transactions = const []});
 
-  static const Color _kPageBackground = Color(0xFFF5F7FA);
-  static const Color _kLabelMuted = Color(0xFF64748B);
-  static const Color _kCardWhite = Color(0xFFFFFFFF);
-  static const Color _kBorderSubtle = Color(0xFFE2E8F0);
   static const Color _kPositiveGreen = Color(0xFF16A34A);
   static const Color _kNegativeRed = Color(0xFFDC2626);
 
@@ -19,23 +15,24 @@ class WalletHistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final walletController = Get.find<WalletController>();
+    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: _kPageBackground,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
         title: Text(
           'Wallet history',
           style: textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F172A),
+            color: scheme.onSurface,
             letterSpacing: -0.3,
           ),
         ),
-        backgroundColor: _kPageBackground,
+        backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: const Color(0xFF0F172A),
+        foregroundColor: scheme.onSurface,
       ),
       body: Obx(() {
         final List<WalletTransaction> effectiveTransactions =
@@ -57,7 +54,7 @@ class WalletHistoryPage extends StatelessWidget {
                 'No wallet transactions available yet.',
                 textAlign: TextAlign.center,
                 style: textTheme.bodyLarge?.copyWith(
-                  color: _kLabelMuted,
+                  color: scheme.onSurfaceVariant,
                   height: 1.4,
                 ),
               ),
@@ -77,9 +74,9 @@ class WalletHistoryPage extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _kCardWhite,
+                color: scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _kBorderSubtle),
+                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,14 +91,14 @@ class WalletHistoryPage extends StatelessWidget {
                               transaction.transactionType,
                               style: textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F172A),
+                                color: scheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               transaction.formattedDate,
                               style: textTheme.bodySmall?.copyWith(
-                                color: _kLabelMuted,
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -118,7 +115,10 @@ class WalletHistoryPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Divider(height: 1, color: _kBorderSubtle),
+                  Divider(
+                    height: 1,
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -157,6 +157,7 @@ class _HistoryInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
@@ -165,7 +166,7 @@ class _HistoryInfoTile extends StatelessWidget {
         Text(
           label,
           style: textTheme.bodySmall?.copyWith(
-            color: WalletHistoryPage._kLabelMuted,
+            color: scheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 4),
@@ -173,7 +174,7 @@ class _HistoryInfoTile extends StatelessWidget {
           value,
           style: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF0F172A),
+            color: scheme.onSurface,
           ),
         ),
       ],

@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
+import 'package:voxtrade_core/assembler/Services/voice_audio_level.dart';
+
 class RecordedAudio {
   RecordedAudio({
     required this.bytes,
@@ -25,6 +27,8 @@ class VoiceRecorder {
   bool _isRecording = false;
 
   bool get isRecording => _isRecording;
+
+  Stream<VoiceAudioLevel>? get audioLevelStream => null;
 
   Future<void> start() async {
     if (_isRecording) {

@@ -40,11 +40,20 @@ class _DatePickerFieldState extends State<DatePickerField> {
   }
 
   Future<void> _pickDate() async {
+    final scheme = Theme.of(context).colorScheme;
     final picked = await showDatePicker(
       context: context,
       initialDate: _clampToRange(selectedDate),
       firstDate: widget.firstDate,
       lastDate: widget.lastDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: scheme,
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -57,33 +66,42 @@ class _DatePickerFieldState extends State<DatePickerField> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fillColor = scheme.surfaceContainerHighest;
+    final borderColor = scheme.outlineVariant;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.label),
+          Text(
+            widget.label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: scheme.onSurface,
+            ),
+          ),
           InkWell(
             onTap: _pickDate,
             borderRadius: BorderRadius.circular(12),
             child: InputDecorator(
               decoration: InputDecoration(
                 hintText: widget.label,
-                suffixIcon: const Icon(Icons.calendar_month),
+                suffixIcon: Icon(Icons.calendar_month, color: scheme.onSurfaceVariant),
                 filled: true,
-                fillColor: Colors.grey.shade900,
+                fillColor: fillColor,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade900, width: 2),
+                  borderSide: BorderSide(color: borderColor, width: 1.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade900, width: 2),
+                  borderSide: BorderSide(color: scheme.primary, width: 2),
                 ),
               ),
               child: Text(
                 formatDate(selectedDate),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: scheme.onSurface),
               ),
             ),
           ),
