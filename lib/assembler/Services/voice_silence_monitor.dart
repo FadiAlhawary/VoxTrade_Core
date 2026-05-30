@@ -7,7 +7,7 @@ import 'package:voxtrade_core/assembler/Services/voice_audio_level.dart';
 /// visible countdown that resets if speech resumes.
 class VoiceSilenceMonitor {
   VoiceSilenceMonitor({
-    this.countdownSeconds = 3,
+    this.countdownDuration = const Duration(milliseconds: 1500),
     this.silenceBeforeCountdown = const Duration(milliseconds: 350),
     this.initialGrace = const Duration(milliseconds: 600),
     this.speechMarginDb = 14.0,
@@ -18,7 +18,7 @@ class VoiceSilenceMonitor {
     this.levelWindowSize = 7,
   });
 
-  final int countdownSeconds;
+  final Duration countdownDuration;
   final Duration silenceBeforeCountdown;
   final Duration initialGrace;
   final double speechMarginDb;
@@ -33,17 +33,18 @@ class VoiceSilenceMonitor {
   DateTime? _listeningStartedAt;
   DateTime? _silenceSince;
   bool _hasDetectedSpeech = false;
-  int? _countdownValue;
+  double? _countdownValue;
+  DateTime? _countdownStartedAt;
 
   double _noiseFloorDb = -48.0;
   final List<double> _recentLevels = [];
   int _consecutiveSpeechFrames = 0;
 
-  void Function(int secondsLeft)? onCountdownTick;
+  void Function(double secondsLeft)? onCountdownTick;
   void Function()? onCountdownCancelled;
   void Function()? onComplete;
 
-  int? get countdownValue => _countdownValue;
+  double? get countdownValue => _countdownValue;
 
   bool get isCountingDown => _countdownValue != null;
 
@@ -53,6 +54,7 @@ class VoiceSilenceMonitor {
     _hasDetectedSpeech = false;
     _silenceSince = null;
     _countdownValue = null;
+    _countdownStartedAt = null;
     _noiseFloorDb = -48.0;
     _recentLevels.clear();
     _consecutiveSpeechFrames = 0;
@@ -65,6 +67,7 @@ class VoiceSilenceMonitor {
     _countdownTimer?.cancel();
     _countdownTimer = null;
     _countdownValue = null;
+    _countdownStartedAt = null;
     _silenceSince = null;
     _listeningStartedAt = null;
     _hasDetectedSpeech = false;
@@ -171,24 +174,32 @@ class VoiceSilenceMonitor {
       return;
     }
 
-    _countdownValue = countdownSeconds;
+    _countdownStartedAt = DateTime.now();
+    _countdownValue = countdownDuration.inMilliseconds / 1000.0;
     onCountdownTick?.call(_countdownValue!);
 
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final current = _countdownValue;
-      if (current == null) {
+    _countdownTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      final startedAt = _countdownStartedAt;
+      if (startedAt == null) {
         timer.cancel();
         return;
       }
-      if (current <= 1) {
+
+      final remaining = countdownDuration - DateTime.now().difference(startedAt);
+      if (remaining <= Duration.zero) {
         timer.cancel();
         _countdownValue = null;
+        _countdownStartedAt = null;
         onComplete?.call();
         return;
       }
-      _countdownValue = current - 1;
-      onCountdownTick?.call(_countdownValue!);
+
+      final secondsLeft = (remaining.inMilliseconds / 1000.0 * 10).ceil() / 10;
+      if (_countdownValue != secondsLeft) {
+        _countdownValue = secondsLeft;
+        onCountdownTick?.call(secondsLeft);
+      }
     });
   }
 
@@ -196,6 +207,7 @@ class VoiceSilenceMonitor {
     _countdownTimer?.cancel();
     _countdownTimer = null;
     _countdownValue = null;
+    _countdownStartedAt = null;
     _silenceSince = null;
     onCountdownCancelled?.call();
   }
