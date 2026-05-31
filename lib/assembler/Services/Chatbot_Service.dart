@@ -18,11 +18,14 @@ class ChatbotService {
 
   Future<ChatbotReply> sendChat({
     required List<ChatMessage> messages,
+    Map<String, double>? marketContext,
   }) async {
     final payload = {
       'messages': messages
           .map((m) => {'role': m.role, 'content': m.content})
           .toList(),
+      if (marketContext != null && marketContext.isNotEmpty)
+        'market_context': marketContext,
     };
 
     try {

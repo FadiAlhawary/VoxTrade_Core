@@ -35,8 +35,10 @@ class ChatbotPage extends StatelessWidget {
             _AmbientBackground(palette: palette),
             Column(
               children: [
-                SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight + 8),
-                _ChatHeader(botName: chat.botName, palette: palette),
+                SizedBox(
+                  height:
+                      MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+                ),
                 Expanded(
                   child: ListView.builder(
                     controller: chat.scrollController,
@@ -130,8 +132,7 @@ class _ChatPalette {
           ? primaryColor.withValues(alpha: 0.22)
           : primaryColor.withValues(alpha: 0.16);
 
-  Color get botBubble =>
-      isDark ? const Color(0xFF152536) : Colors.white;
+  Color get botBubble => isDark ? const Color(0xFF152536) : Colors.white;
 
   Color get onSurface => isDark ? Colors.white : scheme.onSurface;
   Color get onSurfaceMuted =>
@@ -182,10 +183,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       scrolledUnderElevation: 0,
       backgroundColor: Colors.transparent,
       foregroundColor: palette.onSurface,
-      title: Text(
-        '$botName Assistant',
-        style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.2),
-      ),
+      title: _BotIdentityTitle(botName: botName, palette: palette),
       actions: [
         IconButton(
           tooltip: 'Clear conversation',
@@ -209,9 +207,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   palette.pageGradient.first.withValues(alpha: 0.72),
                 ],
               ),
-              border: Border(
-                bottom: BorderSide(color: palette.glassBorder),
-              ),
+              border: Border(bottom: BorderSide(color: palette.glassBorder)),
             ),
           ),
         ),
@@ -241,7 +237,9 @@ class _AmbientBackground extends StatelessWidget {
             top: -60,
             right: -40,
             child: _GlowOrb(
-              color: palette.primary.withValues(alpha: palette.isDark ? 0.18 : 0.14),
+              color: palette.primary.withValues(
+                alpha: palette.isDark ? 0.18 : 0.14,
+              ),
               size: 200,
             ),
           ),
@@ -274,102 +272,91 @@ class _GlowOrb extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: color, blurRadius: 80, spreadRadius: 20),
-        ],
+        boxShadow: [BoxShadow(color: color, blurRadius: 80, spreadRadius: 20)],
       ),
     );
   }
 }
 
-class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.botName, required this.palette});
+class _BotIdentityTitle extends StatelessWidget {
+  const _BotIdentityTitle({required this.botName, required this.palette});
 
   final String botName;
   final _ChatPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: palette.glass,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.glassBorder),
-        boxShadow: palette.cardShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: palette.accentGradient,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: palette.primary.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.smart_toy_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            gradient: palette.accentGradient,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: palette.primary.withValues(alpha: 0.35),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  botName,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: palette.onSurface,
-                    letterSpacing: -0.2,
-                  ),
+          child: const Icon(
+            Icons.smart_toy_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                botName,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: palette.onSurface,
+                  letterSpacing: -0.2,
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF34D399),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF34D399).withValues(alpha: 0.6),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Online · VoxTrade Assistant',
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: palette.onSurfaceMuted,
-                          fontWeight: FontWeight.w500,
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34D399),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF34D399).withValues(alpha: 0.6),
+                          blurRadius: 5,
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      'Online · VoxTrade Assistant',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: palette.onSurfaceMuted,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -443,9 +430,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isUser ? 5 : 18),
                     ),
                     border:
-                        isUser
-                            ? null
-                            : Border.all(color: palette.glassBorder),
+                        isUser ? null : Border.all(color: palette.glassBorder),
                     boxShadow:
                         isUser
                             ? [
@@ -606,7 +591,11 @@ class _SuggestionBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
           child: Row(
             children: [
-              Icon(Icons.tips_and_updates_outlined, size: 15, color: palette.primary),
+              Icon(
+                Icons.tips_and_updates_outlined,
+                size: 15,
+                color: palette.primary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Try asking',
