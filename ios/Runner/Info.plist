@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>VoxTrade needs microphone access so you can place voice trading commands.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>VoxTrade listens for "Hey Vox" so you can start voice trading hands-free.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:localstorage/localstorage.dart';
 
 class ThemeController extends GetxController {
-  final RxBool isDarkMode = false.obs;
+  final RxBool isDarkMode = true.obs;
 
   @override
   void onInit() {
@@ -11,8 +11,8 @@ class ThemeController extends GetxController {
     if (isDarkModeString != null) {
       isDarkMode.value = isDarkModeString == 'true';
     } else {
-      isDarkMode.value = false;
-      localStorage.setItem('isDarkMode', 'false');
+      isDarkMode.value = true;
+      localStorage.setItem('isDarkMode', 'true');
     }
   }
 

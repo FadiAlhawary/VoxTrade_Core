@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
+import 'package:voxtrade_core/assembler/Controller/Chatbot_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/MarketController.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
@@ -13,6 +14,7 @@ import 'package:voxtrade_core/assembler/Services/Voice_Nlp_Service.dart';
 import 'package:voxtrade_core/assembler/Services/market_socket_service.dart';
 import 'package:voxtrade_core/assembler/Services/voice_recorder.dart';
 import 'package:voxtrade_core/assembler/Services/voice_silence_monitor.dart';
+import 'package:voxtrade_core/assembler/Services/wake_word_service.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 import 'package:voxtrade_core/pages/DashBoard_page.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
@@ -20,7 +22,8 @@ import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
 import 'package:voxtrade_core/pages/Wallet.dart';
 import 'package:voxtrade_core/pages/Portfolio_Page.dart';
 import 'package:voxtrade_core/pages/User_Info_Page.dart';
-import 'package:voxtrade_core/pages/Voice_Command_Models_Page.dart';
+import 'package:voxtrade_core/pages/Settings_Page.dart';
+import 'package:voxtrade_core/pages/Chatbot_Page.dart';
 
 import '../../assembler/Controller/NavBarController.dart';
 import '../../pages/Markets.dart';
@@ -42,9 +45,11 @@ class _AppShellState extends State<AppShell>
   final VoiceCommandSettingsController _voiceSettings =
       Get.find<VoiceCommandSettingsController>();
   final VoiceSilenceMonitor _silenceMonitor = VoiceSilenceMonitor();
-  double? _voiceSilenceCountdown;
+  final WakeWordService _wakeWord = WakeWordService();
   bool _isVoiceListening = false;
   bool _isVoiceProcessing = false;
+  /// 0 = listening; fills toward 1 during silence, resets if user speaks again.
+  double _voiceFinishProgress = 0;
   bool _isExecutingVoiceOrder = false;
   bool _voiceCommandAborted = false;
   late final AnimationController _edgeGlowController;
@@ -56,20 +61,51 @@ class _AppShellState extends State<AppShell>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    _initWakeWord();
+  }
+
+  Future<void> _initWakeWord() async {
+    _wakeWord.onTriggered = () {
+      if (!mounted || _isVoiceListening || _isVoiceProcessing) {
+        return;
+      }
+      SnackBarComp.show(
+        'Listening for your command…',
+        title: 'Hey Vox',
+        status: SnackBarCompStatus.info,
+      );
+      unawaited(_startVoiceListening());
+    };
+
+    final available = await _wakeWord.initialize();
+    if (!mounted) {
+      return;
+    }
+    if (available) {
+      _wakeWord.start();
+    } else if (mounted) {
+      SnackBarComp.show(
+        'Allow microphone access to use "Hey Vox" hands-free.',
+        title: 'Wake word unavailable',
+        status: SnackBarCompStatus.warning,
+      );
+    }
+  }
+
+  void _resumeWakeWordListening() {
+    if (!mounted || _isVoiceListening || _isVoiceProcessing) {
+      return;
+    }
+    _wakeWord.resume();
   }
 
   @override
   void dispose() {
     _silenceMonitor.stop();
+    _wakeWord.dispose();
     _edgeGlowController.dispose();
     _recorder.dispose();
     super.dispose();
-  }
-
-  String _formatVoiceCountdown(double seconds) {
-    return seconds == seconds.roundToDouble()
-        ? seconds.toInt().toString()
-        : seconds.toStringAsFixed(1);
   }
 
   Future<void> _onCenterMicTap() async {
@@ -84,6 +120,7 @@ class _AppShellState extends State<AppShell>
   }
 
   Future<void> _startVoiceListening() async {
+    await _wakeWord.pause();
     try {
       _voiceCommandAborted = false;
       await _recorder.start();
@@ -92,7 +129,7 @@ class _AppShellState extends State<AppShell>
       }
       setState(() {
         _isVoiceListening = true;
-        _voiceSilenceCountdown = null;
+        _voiceFinishProgress = 0;
       });
       _edgeGlowController.repeat(reverse: true);
       _startSilenceMonitoring();
@@ -101,6 +138,7 @@ class _AppShellState extends State<AppShell>
         return;
       }
       SnackBarComp.show(e.toString().replaceFirst('Exception: ', ''));
+      _resumeWakeWordListening();
     }
   }
 
@@ -111,12 +149,18 @@ class _AppShellState extends State<AppShell>
       return;
     }
 
+    final countdownSeconds =
+        _silenceMonitor.countdownDuration.inMilliseconds / 1000.0;
+
     _silenceMonitor.onCountdownTick = (secondsLeft) {
       if (!mounted) {
         return;
       }
       setState(() {
-        _voiceSilenceCountdown = secondsLeft;
+        _voiceFinishProgress = (1 - (secondsLeft / countdownSeconds)).clamp(
+          0.0,
+          1.0,
+        );
       });
     };
     _silenceMonitor.onCountdownCancelled = () {
@@ -124,13 +168,16 @@ class _AppShellState extends State<AppShell>
         return;
       }
       setState(() {
-        _voiceSilenceCountdown = null;
+        _voiceFinishProgress = 0;
       });
     };
     _silenceMonitor.onComplete = () {
       if (!mounted || !_isVoiceListening) {
         return;
       }
+      setState(() {
+        _voiceFinishProgress = 1;
+      });
       _stopAndProcessVoice();
     };
 
@@ -143,7 +190,7 @@ class _AppShellState extends State<AppShell>
     setState(() {
       _isVoiceListening = false;
       _isVoiceProcessing = true;
-      _voiceSilenceCountdown = null;
+      _voiceFinishProgress = 0;
     });
     try {
       final audio = await _recorder.stop();
@@ -155,6 +202,7 @@ class _AppShellState extends State<AppShell>
         return;
       }
       if (_voiceCommandAborted) {
+        _resumeWakeWordListening();
         return;
       }
       setState(() {
@@ -165,6 +213,7 @@ class _AppShellState extends State<AppShell>
       if (mounted) {
         SnackBarComp.show(e.toString().replaceFirst('Exception: ', ''));
       }
+      _resumeWakeWordListening();
     } finally {
       if (mounted) {
         setState(() {
@@ -184,6 +233,7 @@ class _AppShellState extends State<AppShell>
         title: 'Low confidence',
         status: SnackBarCompStatus.warning,
       );
+      _resumeWakeWordListening();
       return;
     }
 
@@ -276,6 +326,7 @@ class _AppShellState extends State<AppShell>
     } else {
       SnackBarComp.show('Order canceled.');
     }
+    _resumeWakeWordListening();
   }
 
   Future<void> _abortVoiceCommand() async {
@@ -295,9 +346,10 @@ class _AppShellState extends State<AppShell>
     setState(() {
       _isVoiceListening = false;
       _isVoiceProcessing = false;
-      _voiceSilenceCountdown = null;
+      _voiceFinishProgress = 0;
     });
     SnackBarComp.show('Voice command canceled.');
+    _resumeWakeWordListening();
   }
 
   Future<void> _executeVoiceOrder(Map<String, dynamic> response) async {
@@ -490,10 +542,10 @@ class _AppShellState extends State<AppShell>
       //   pageBuilder: () => Markets(),
       // ),
       _DrawerRouteItem(
-        title: 'Voice Models',
-        subtitle: 'Manage speech-to-text models',
-        icon: Icons.record_voice_over_rounded,
-        pageBuilder: () => const VoiceCommandModelsPage(),
+        title: 'Settings',
+        subtitle: 'Appearance and voice models',
+        icon: Icons.settings_rounded,
+        pageBuilder: () => const SettingsPage(),
       ),
       _DrawerRouteItem(
         title: 'Trade',
@@ -538,6 +590,7 @@ class _AppShellState extends State<AppShell>
         return Obx(() {
           final isDarkMode = themeController.isDarkMode.value;
           final scheme = Theme.of(context).colorScheme;
+          final chat = Get.find<ChatbotController>();
           return Stack(
             children: [
               Scaffold(
@@ -546,15 +599,14 @@ class _AppShellState extends State<AppShell>
                   centerTitle: true,
                   actions: [
                     IconButton(
-                      onPressed: () {
-                        themeController.changeTheme(
-                          !themeController.isDarkMode.value,
-                        );
-                      },
+                      tooltip: '${chat.botName} assistant',
+                      onPressed: () => Get.to(() => const ChatbotPage()),
                       icon: Icon(
-                        themeController.isDarkMode.value
-                            ? Icons.light_mode
-                            : Icons.dark_mode,
+                        Icons.smart_toy_rounded,
+                        color:
+                            isDarkMode
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : primaryColor,
                       ),
                     ),
                   ],
@@ -860,11 +912,7 @@ class _AppShellState extends State<AppShell>
                                             children: [
                                               Icon(
                                                 _isVoiceListening
-                                                    ? (_voiceSilenceCountdown !=
-                                                            null
-                                                        ? Icons.timer_rounded
-                                                        : Icons
-                                                            .graphic_eq_rounded)
+                                                    ? Icons.graphic_eq_rounded
                                                     : Icons
                                                         .hourglass_top_rounded,
                                                 color:
@@ -877,34 +925,9 @@ class _AppShellState extends State<AppShell>
                                                 size: 30,
                                               ),
                                               const SizedBox(height: 10),
-                                              if (_isVoiceListening &&
-                                                  _voiceSilenceCountdown !=
-                                                      null) ...[
-                                                Text(
-                                                  _formatVoiceCountdown(
-                                                    _voiceSilenceCountdown!,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : scheme.onSurface,
-                                                    fontSize: 48,
-                                                    fontWeight: FontWeight.w800,
-                                                    height: 1,
-                                                    decoration:
-                                                        TextDecoration.none,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                              ],
                                               Text(
                                                 _isVoiceListening
-                                                    ? (_voiceSilenceCountdown !=
-                                                            null
-                                                        ? 'Finishing in ${_formatVoiceCountdown(_voiceSilenceCountdown!)}...'
-                                                        : 'Listening to your order')
+                                                    ? 'Listening to your order'
                                                     : 'Analyzing your command',
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
@@ -919,12 +942,19 @@ class _AppShellState extends State<AppShell>
                                                       TextDecoration.none,
                                                 ),
                                               ),
+                                              if (_isVoiceListening) ...[
+                                                const SizedBox(height: 14),
+                                                _VoiceSilenceProgressBar(
+                                                  progress: _voiceFinishProgress,
+                                                  isDark: isDark,
+                                                  scheme: scheme,
+                                                ),
+                                              ],
                                               const SizedBox(height: 6),
                                               Text(
                                                 _isVoiceListening
-                                                    ? (_voiceSilenceCountdown !=
-                                                            null
-                                                        ? 'Keep speaking to continue listening, or wait to analyze.'
+                                                    ? (_voiceFinishProgress > 0
+                                                        ? 'Keep speaking to stay in listening mode.'
                                                         : 'Speak clearly. Tap anywhere to cancel.')
                                                     : 'Please wait... Tap anywhere to cancel.',
                                                 textAlign: TextAlign.center,
@@ -1120,6 +1150,61 @@ class _BottomTradeNav extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Horizontal silence timer — empty at listen start, fills left→right, resets on speech.
+class _VoiceSilenceProgressBar extends StatelessWidget {
+  const _VoiceSilenceProgressBar({
+    required this.progress,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  final double progress;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0);
+    final trackColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.14)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.9);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fillWidth = constraints.maxWidth * clamped;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            height: 10,
+            width: double.infinity,
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Positioned.fill(child: ColoredBox(color: trackColor)),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  width: fillWidth,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.horizontal(
+                      left: const Radius.circular(999),
+                      right: Radius.circular(clamped >= 0.995 ? 999 : 0),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -7,7 +7,7 @@ import 'package:voxtrade_core/assembler/Services/voice_audio_level.dart';
 /// visible countdown that resets if speech resumes.
 class VoiceSilenceMonitor {
   VoiceSilenceMonitor({
-    this.countdownDuration = const Duration(milliseconds: 1500),
+    this.countdownDuration = const Duration(milliseconds: 3000),
     this.silenceBeforeCountdown = const Duration(milliseconds: 350),
     this.initialGrace = const Duration(milliseconds: 600),
     this.speechMarginDb = 14.0,
@@ -92,8 +92,15 @@ class VoiceSilenceMonitor {
         _consecutiveSpeechFrames >= consecutiveSpeechFramesRequired;
 
     if (_countdownValue != null) {
-      if (isSpeaking) {
+      // Use a lower bar while counting down so pause → talk reliably cancels.
+      if (_isResumingSpeech(sample)) {
+        _consecutiveSpeechFrames++;
+      } else {
+        _consecutiveSpeechFrames = 0;
+      }
+      if (_consecutiveSpeechFrames >= 2) {
         _cancelCountdown();
+        _hasDetectedSpeech = true;
       }
       return;
     }
@@ -132,6 +139,15 @@ class VoiceSilenceMonitor {
     if (level <= provisionalCeiling) {
       _noiseFloorDb = (_noiseFloorDb * 0.88) + (level * 0.12);
     }
+  }
+
+  /// Loud enough to treat as "user started talking again" during the finish countdown.
+  bool _isResumingSpeech(VoiceAudioLevel sample) {
+    final peak = math.max(sample.currentDb, sample.maxDb);
+    final aboveNoise = peak > _noiseFloorDb + 8.0;
+    // Absolute floor so resume works even if the noise model drifted during a pause.
+    const absoluteSpeechDb = -40.0;
+    return aboveNoise || peak > absoluteSpeechDb;
   }
 
   bool _isSpeechLike(VoiceAudioLevel sample) {
@@ -209,6 +225,7 @@ class VoiceSilenceMonitor {
     _countdownValue = null;
     _countdownStartedAt = null;
     _silenceSince = null;
+    _consecutiveSpeechFrames = 0;
     onCountdownCancelled?.call();
   }
 }

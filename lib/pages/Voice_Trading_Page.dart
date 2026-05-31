@@ -5,7 +5,10 @@ import 'package:voxtrade_core/assembler/Services/Voice_Nlp_Service.dart';
 import 'package:voxtrade_core/assembler/Services/voice_recorder.dart';
 
 class VoiceTradingPage extends StatefulWidget {
-  const VoiceTradingPage({super.key});
+  const VoiceTradingPage({super.key, this.autoStart = false});
+
+  /// When true, starts recording after a short delay (wake-word navigation).
+  final bool autoStart;
 
   @override
   State<VoiceTradingPage> createState() => _VoiceTradingPageState();
@@ -25,6 +28,20 @@ class _VoiceTradingPageState extends State<VoiceTradingPage> {
   String _sttModelRequested = 'gpt-4o-transcribe';
   Map<String, dynamic>? _response;
   Timer? _autoStopTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted && !_isRecording && !_isProcessing) {
+            unawaited(_startRecording());
+          }
+        });
+      });
+    }
+  }
 
   @override
   void dispose() {

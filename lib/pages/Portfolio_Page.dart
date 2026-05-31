@@ -16,6 +16,7 @@ import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart'
 import 'package:voxtrade_core/assembler/common/enum.dart';
 import 'package:voxtrade_core/Components/shimer/themed_shimmer.dart';
 import 'package:voxtrade_core/pages/Market_Buy_Sell.dart';
+import 'package:voxtrade_core/utils/responsive_layout.dart';
 import 'package:voxtrade_core/utils/shimmer_theme.dart';
 
 class PortfolioPage extends StatefulWidget {
@@ -38,13 +39,25 @@ class _PortfolioPageState extends State<PortfolioPage>
   final Map<String, MarketChartController> _symbolControllers = {};
   final Set<String> _ownedControllers = <String>{};
   int _selectedTabIndex = 0;
+  static const int _assetScopeAll = -1;
   static const int _historyInitialCount = 8;
   int _visibleOrdersCount = _historyInitialCount;
   int _visibleTradesCount = _historyInitialCount;
   String _selectedAccount = 'Primary';
   String _selectedPortfolio = 'Growth';
   int _assetScope = 5;
+  bool _assetScopeInitialized = false;
   bool _wasTradeTabVisible = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_assetScopeInitialized) {
+      final info = responsiveInfoOf(context);
+      _assetScope = info.isTablet ? 10 : 5;
+      _assetScopeInitialized = true;
+    }
+  }
 
   @override
   void initState() {
@@ -190,7 +203,7 @@ class _PortfolioPageState extends State<PortfolioPage>
   }) {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final isWide = MediaQuery.of(context).size.width > 980;
+    final isWide = responsiveInfoOf(context).isDesktop;
     final scopedPositions = _scopedPositions(positions);
 
     if (positions.isEmpty) {
@@ -248,7 +261,11 @@ class _PortfolioPageState extends State<PortfolioPage>
                   children: [
                     _buildAssetScopeTabs(context),
                     const SizedBox(height: 12),
-                    _buildAssetsTableCard(context, scopedPositions),
+                    _buildAssetsTableCard(
+            context,
+            scopedPositions,
+            totalCount: positions.length,
+          ),
                   ],
                 ),
               ),
@@ -262,7 +279,11 @@ class _PortfolioPageState extends State<PortfolioPage>
         else ...[
           _buildAssetScopeTabs(context),
           const SizedBox(height: 12),
-          _buildAssetsTableCard(context, scopedPositions),
+          _buildAssetsTableCard(
+            context,
+            scopedPositions,
+            totalCount: positions.length,
+          ),
           const SizedBox(height: 14),
           _buildAnalyticsPanel(context, scopedPositions),
         ],
@@ -390,6 +411,14 @@ class _PortfolioPageState extends State<PortfolioPage>
               onTap: () => setState(() => _assetScope = 10),
             ),
           ),
+          Expanded(
+            child: _scopeTab(
+              context: context,
+              title: 'All',
+              selected: _assetScope == _assetScopeAll,
+              onTap: () => setState(() => _assetScope = _assetScopeAll),
+            ),
+          ),
         ],
       ),
     );
@@ -426,8 +455,9 @@ class _PortfolioPageState extends State<PortfolioPage>
 
   Widget _buildAssetsTableCard(
     BuildContext context,
-    List<PortfolioPositionDto> positions,
-  ) {
+    List<PortfolioPositionDto> positions, {
+    int? totalCount,
+  }) {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Container(
@@ -449,6 +479,16 @@ class _PortfolioPageState extends State<PortfolioPage>
                   color: cs.onSurface,
                 ),
               ),
+              if (totalCount != null && totalCount > positions.length) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '(${positions.length} of $totalCount)',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const Spacer(),
               FilledButton.icon(
                 onPressed: _openBuySellAddInstrument,
@@ -613,7 +653,11 @@ class _PortfolioPageState extends State<PortfolioPage>
       0,
       (sum, item) => sum + _liveMarketValue(item),
     );
-    final chartItems = positions.take(5).toList();
+    final chartItems = positions.take(_assetScope == _assetScopeAll ? 10 : 5).toList();
+    final allocationTitle =
+        _assetScope == _assetScopeAll
+            ? 'Dollar Allocations (All ${positions.length})'
+            : 'Dollar Allocations In Top ${chartItems.length}';
     final palette = const [
       Color(0xFF4F6BFF),
       Color(0xFFFF905D),
@@ -634,7 +678,7 @@ class _PortfolioPageState extends State<PortfolioPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Dollar Allocations In Top ${chartItems.length}',
+            allocationTitle,
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
@@ -894,6 +938,9 @@ class _PortfolioPageState extends State<PortfolioPage>
   ) {
     final sorted = [...positions]
       ..sort((a, b) => _liveMarketValue(b).compareTo(_liveMarketValue(a)));
+    if (_assetScope == _assetScopeAll) {
+      return sorted;
+    }
     final limit = math.min(_assetScope, sorted.length);
     return sorted.take(limit).toList();
   }

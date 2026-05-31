@@ -15,7 +15,7 @@ class VoiceSttModelOption {
 
 class VoiceCommandSettingsController extends GetxController {
   static const String storageKey = 'voiceSttModel';
-  static const String defaultModelId = 'gpt-4o-transcribe';
+  static const String defaultModelId = 'gemini';
 
   static const List<VoiceSttModelOption> availableModels = [
     VoiceSttModelOption(
