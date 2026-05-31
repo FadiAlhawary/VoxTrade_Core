@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/shimer/page_loading_shimmers.dart';
+import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
 import 'package:voxtrade_core/assembler/common/auth_session.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
@@ -22,7 +24,14 @@ class _SplashPageState extends State<SplashPage> {
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
     if (readIsLoggedIn()) {
-      Get.offAllNamed(RouteStrings.root);
+      final userController = Get.find<UserController>();
+      final ok = await userController.verifySessionOnStartup();
+      if (!mounted) return;
+      if (ok) {
+        Get.offAllNamed(RouteStrings.root);
+      } else {
+        Get.offAllNamed(RouteStrings.signIn);
+      }
     } else {
       Get.offAllNamed(RouteStrings.signIn);
     }
@@ -30,6 +39,6 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const SplashPageShimmer();
   }
 }

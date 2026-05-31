@@ -40,9 +40,8 @@ class WalletDto {
           (json['walletHistory'] as List<dynamic>? ?? [])
               .whereType<Map>()
               .map(
-                (item) => WalletHistoryDto.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
+                (item) =>
+                    WalletHistoryDto.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList(),
     );

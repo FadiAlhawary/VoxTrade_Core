@@ -3,8 +3,10 @@ import 'package:voxtrade_core/Components/ModelDto/PlaceOrderRequestDTO.dart';
 import 'package:voxtrade_core/Components/ModelDto/PlaceOrderResponseDTO.dart';
 import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
+import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 import 'package:voxtrade_core/assembler/Services/Market_Services.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'package:voxtrade_core/assembler/common/wallet_guards.dart';
 
 class MarketController extends GetxController {
   final userController = Get.find<UserController>();
@@ -22,6 +24,13 @@ class MarketController extends GetxController {
     int? currencyId,
     String sourceCode,
   ) async {
+    if (Get.isRegistered<WalletController>()) {
+      final wallet = Get.find<WalletController>().wallet.value;
+      if (!ensureWalletCanTransact(wallet)) {
+        return;
+      }
+    }
+
     isLoading.value = true;
     try {
       PlaceOrderRequestDTO request = PlaceOrderRequestDTO(

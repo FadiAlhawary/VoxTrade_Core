@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:voxtrade_core/assembler/Models/chat_message.dart';
 import 'package:voxtrade_core/assembler/common/.env.dart';
+import 'package:voxtrade_core/utils/service_debug_logger.dart';
 
 class ChatbotService {
   ChatbotService()
@@ -10,7 +11,9 @@ class ChatbotService {
           receiveTimeout: const Duration(seconds: 60),
           headers: {'Content-Type': 'application/json'},
         ),
-      );
+      ) {
+    attachServiceDebugLogging(_dio, tag: 'ChatbotService');
+  }
 
   final Dio _dio;
 
@@ -48,6 +51,15 @@ class ChatbotService {
       final responseBody = error.response?.data;
       final bodyMessage =
           responseBody is Map ? responseBody['detail']?.toString() : null;
+
+      ServiceDebugLogger.error(
+        tag: 'ChatbotService',
+        message: bodyMessage ?? error.message ?? 'Chat request failed',
+        method: error.requestOptions.method,
+        url: error.requestOptions.uri.toString(),
+        statusCode: statusCode,
+        responseData: responseBody,
+      );
 
       throw Exception(
         bodyMessage ??

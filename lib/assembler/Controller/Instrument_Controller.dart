@@ -13,8 +13,9 @@ class InstrumentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchInstruments();
-    fetchInstrumentTypes();
+    fetchInstruments().whenComplete(() {
+      fetchInstrumentTypes();
+    });
   }
   
   InstrumentDTO getInstrumentById(int instrumentId) {
@@ -54,6 +55,8 @@ class InstrumentController extends GetxController {
     } catch (e) {
       isError.value = true;
       errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -65,6 +68,8 @@ class InstrumentController extends GetxController {
     } catch (e) {
       isError.value = true;
       errorMessage.value = e.toString();
+    } finally {
+      isLoading.value = false;
     }
   }
 }

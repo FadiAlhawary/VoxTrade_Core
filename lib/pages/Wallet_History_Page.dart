@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:voxtrade_core/Components/Loader.dart';
+import 'package:voxtrade_core/Components/shimer/page_loading_shimmers.dart';
 import 'package:voxtrade_core/Models/Wallet_Transaction_Model.dart';
 import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 
@@ -43,7 +43,10 @@ class WalletHistoryPage extends StatelessWidget {
                     .toList();
 
         if (walletController.isLoading.value && effectiveTransactions.isEmpty) {
-          return const Center(child: Loader());
+          return const ListCardsPageShimmer(
+            cardHeight: 88,
+            borderRadius: 16,
+          );
         }
 
         if (effectiveTransactions.isEmpty) {

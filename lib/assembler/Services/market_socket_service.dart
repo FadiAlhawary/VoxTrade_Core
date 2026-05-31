@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:voxtrade_core/assembler/common/.env.dart';
+import 'package:voxtrade_core/utils/service_debug_logger.dart';
 
 class MarketTick {
   final String symbol;
@@ -67,6 +67,13 @@ class MarketSocketService extends GetxService {
 
     _hubConnection.onclose(({Exception? error}) {
       isConnected.value = false;
+      if (error != null) {
+        ServiceDebugLogger.error(
+          tag: 'MarketSocketService',
+          message: 'SignalR connection closed',
+          detail: error.toString(),
+        );
+      }
       _scheduleReconnectIfNeeded();
     });
 
@@ -123,8 +130,12 @@ class MarketSocketService extends GetxService {
       _reconnectTimer = null;
     } catch (e, st) {
       isConnected.value = false;
-      debugPrint('MarketSocketService: connect failed ($e)');
-      debugPrint('$st');
+      ServiceDebugLogger.error(
+        tag: 'MarketSocketService',
+        message: 'Connect failed',
+        url: '${ENV.apiBaseUrl}/hubs/market',
+        detail: '$e\n$st',
+      );
     }
   }
 
@@ -170,7 +181,11 @@ class MarketSocketService extends GetxService {
 
       await _hubConnection.invoke('SubscribeSymbol', args: [symbol]);
     } catch (e) {
-      debugPrint('MarketSocketService: SubscribeSymbol failed ($e)');
+      ServiceDebugLogger.error(
+        tag: 'MarketSocketService',
+        message: 'SubscribeSymbol failed',
+        detail: '$symbol → $e',
+      );
     }
   }
 
@@ -180,7 +195,11 @@ class MarketSocketService extends GetxService {
     try {
       await _hubConnection.invoke('UnsubscribeSymbol', args: [symbol]);
     } catch (e) {
-      debugPrint('MarketSocketService: UnsubscribeSymbol failed ($e)');
+      ServiceDebugLogger.error(
+        tag: 'MarketSocketService',
+        message: 'UnsubscribeSymbol failed',
+        detail: '$symbol → $e',
+      );
     }
   }
 

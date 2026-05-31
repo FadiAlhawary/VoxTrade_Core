@@ -67,9 +67,7 @@ class MyApp extends StatelessWidget {
         initialRoute: RouteStrings.root,
         getPages: Routes.routes,
         builder: (context, child) {
-          return ResponsiveLayout(
-            child: child ?? const SizedBox.shrink(),
-          );
+          return ResponsiveLayout(child: child ?? const SizedBox.shrink());
         },
       ),
     );

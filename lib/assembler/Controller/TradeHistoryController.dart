@@ -13,10 +13,11 @@ class TradeHistoryController extends GetxController {
 
   int get _userId => Get.find<UserController>().user.value?.id ?? 0;
 
-  @override
-  void onInit() {
-    super.onInit();
-    fetchTrades();
+  Future<void> ensureLoaded() async {
+    if (_userId == 0) return;
+    if (isLoading.value) return;
+    if (trades.isNotEmpty || errorMessage.value != null) return;
+    await fetchTrades();
   }
 
   Future<void> fetchTrades() async {

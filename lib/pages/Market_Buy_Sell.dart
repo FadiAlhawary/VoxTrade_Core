@@ -14,6 +14,8 @@ import 'package:voxtrade_core/assembler/Controller/TradeHistoryController.dart';
 import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/market_chart_controller.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'package:voxtrade_core/assembler/common/wallet_guards.dart';
+import 'package:voxtrade_core/Components/Wallet/FrozenWalletBanner.dart';
 import 'package:voxtrade_core/utils/Helper.dart';
 
 class MarketBuySell extends StatelessWidget {
@@ -95,7 +97,9 @@ class MarketBuySell extends StatelessWidget {
               ? (double.tryParse(_limitPriceController.text.trim()) ?? 0)
               : currentPrice;
       final estimatedTotal = amount * selectedExecutionPrice;
+      final walletFrozen = _walletController.wallet.value.isFrozen;
       final canSubmit =
+          !walletFrozen &&
           _amountError.value == null &&
           _limitPriceError.value == null &&
           amount > 0 &&
@@ -176,7 +180,8 @@ class MarketBuySell extends StatelessWidget {
               final ticketPanel = _buildTicketPanel(
                 scheme: scheme,
                 isDark: isDark,
-                isFormLocked: _isSubmittingOrder.value,
+                isFormLocked: _isSubmittingOrder.value || walletFrozen,
+                walletFrozen: walletFrozen,
                 baseCurrency: baseCurrency,
                 quoteCurrency: quoteCurrency,
                 availableToSell: availableToSell,
@@ -288,6 +293,7 @@ class MarketBuySell extends StatelessWidget {
     required ColorScheme scheme,
     required bool isDark,
     required bool isFormLocked,
+    required bool walletFrozen,
     required String baseCurrency,
     required String quoteCurrency,
     required double availableToSell,
@@ -323,6 +329,10 @@ class MarketBuySell extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (walletFrozen) ...[
+                  const FrozenWalletBanner(),
+                  const SizedBox(height: 12),
+                ],
                 Container(
                   decoration: BoxDecoration(
                     color: scheme.surface.withValues(alpha: isDark ? 0.5 : 1),

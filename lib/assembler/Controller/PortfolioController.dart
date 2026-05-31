@@ -14,50 +14,53 @@ class PortfolioController extends GetxController {
       <PortfolioProfitLossPointDto>[].obs;
   RxBool isLoading = false.obs;
   RxBool isLoadingProfitLossChart = false.obs;
+  final RxString lastPortfolioError = ''.obs;
+
+  int? get _userId => userController.user.value?.id;
 
   @override
   void onInit() {
     super.onInit();
-    fetchPortfolio();
+    ever(userController.user, (_) {
+      if (_userId != null) fetchPortfolio();
+    });
   }
 
   Future<void> fetchProfitLossChart(DateTime from, DateTime to) async {
+    final userId = _userId;
+    if (userId == null) return;
+
     isLoadingProfitLossChart.value = true;
     try {
-      var data = await getProfitLossChart(
-        userController.user.value!.id,
-        from,
-        to,
-      ).timeout(const Duration(seconds: 15));
+      var data = await getProfitLossChart(userId, from, to).timeout(
+        const Duration(seconds: 15),
+      );
       profitLossChart.value = data;
     } on TimeoutException {
       SnackBarComp.show(
-        "Profit/loss request timed out. Please try again.",
-        title: "Timeout while fetching profit loss chart",
+        'Profit/loss request timed out. Please try again.',
+        title: 'Chart unavailable',
         status: SnackBarCompStatus.danger,
       );
     } catch (e) {
-      SnackBarComp.show(
-        e.toString(),
-        title: "Error while fetching profit loss chart",
-        status: SnackBarCompStatus.danger,
-      );
+      SnackBarComp.showError(e, title: 'Chart unavailable');
     } finally {
       isLoadingProfitLossChart.value = false;
     }
   }
 
   Future<void> fetchPortfolio() async {
+    final userId = _userId;
+    if (userId == null) return;
+
     isLoading.value = true;
+    lastPortfolioError.value = '';
     try {
-      var data = await getPortfolio(userController.user.value!.id);
+      var data = await getPortfolio(userId);
       portfolio.value = data;
     } catch (e) {
-      SnackBarComp.show(
-        e.toString(),
-        title: "Error while fetching portfolio",
-        status: SnackBarCompStatus.danger,
-      );
+      lastPortfolioError.value = e.toString();
+      SnackBarComp.showError(e, title: 'Portfolio unavailable');
     } finally {
       isLoading.value = false;
     }

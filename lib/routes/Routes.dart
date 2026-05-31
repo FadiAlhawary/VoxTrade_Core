@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/AppSell/AppShell.dart';
 import 'package:voxtrade_core/assembler/Bindings/AppShellBinding.dart';
 import 'package:voxtrade_core/assembler/Bindings/order_history_binding.dart';
+import 'package:voxtrade_core/assembler/Bindings/payment_method_binding.dart';
 import 'package:voxtrade_core/assembler/Bindings/trade_history_binding.dart';
 import 'package:voxtrade_core/pages/DashBoard_page.dart';
 import 'package:voxtrade_core/pages/Home_page.dart';
@@ -13,6 +14,9 @@ import 'package:voxtrade_core/pages/Sign_In_page.dart';
 import 'package:voxtrade_core/pages/Sign_Up_page.dart';
 import 'package:voxtrade_core/pages/Markets.dart';
 import 'package:voxtrade_core/pages/Splash_page.dart';
+import 'package:voxtrade_core/pages/Add_Payment_Method_Page.dart';
+import 'package:voxtrade_core/pages/Payment_Methods_Page.dart';
+import 'package:voxtrade_core/pages/Transfer_Money_Page.dart';
 import 'package:voxtrade_core/routes/auth_middleware.dart';
 import 'package:voxtrade_core/routes/route_names.dart';
 
@@ -60,5 +64,22 @@ class Routes {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(name: RouteStrings.dashBoard, page: () => const DashBoardPage()),
+    GetPage(
+      name: RouteStrings.transferMoney,
+      page: () => const TransferMoneyPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: RouteStrings.paymentMethods,
+      page: () => const PaymentMethodsPage(),
+      binding: PaymentMethodBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: RouteStrings.addPaymentMethod,
+      page: () => const AddPaymentMethodPage(),
+      binding: PaymentMethodBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
   ];
 }

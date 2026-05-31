@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
+import 'package:voxtrade_core/assembler/common/enum.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
 
 class UserInfoPage extends StatelessWidget {
@@ -216,9 +218,10 @@ class UserInfoPage extends StatelessWidget {
                     accentColor: Colors.orangeAccent,
                     isDark: isDark,
                     onTap: () {
-                      Get.snackbar(
-                        'Forgot Password',
+                      SnackBarComp.show(
                         'Password recovery flow will be connected here.',
+                        title: 'Forgot Password',
+                        status: SnackBarCompStatus.info,
                       );
                     },
                   ),
@@ -230,9 +233,10 @@ class UserInfoPage extends StatelessWidget {
                     accentColor: Colors.cyanAccent,
                     isDark: isDark,
                     onTap: () {
-                      Get.snackbar(
-                        'Change Password',
+                      SnackBarComp.show(
                         'Change password screen will be connected here.',
+                        title: 'Change Password',
+                        status: SnackBarCompStatus.info,
                       );
                     },
                   ),

@@ -6,8 +6,7 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
-/// Listens for "Hey Vox" (and common misrecognitions) then triggers voice recording.
-/// Mirrors web `useWakeWord.ts`: continuous listen, 6s cooldown, auto-restart on end/error.
+/// Listens for "Hey Vox" then triggers voice recording.
 class WakeWordService {
   WakeWordService();
 
@@ -16,28 +15,48 @@ class WakeWordService {
     'hey box',
     'hey fox',
     'hey volks',
-    'a vox',
     'hey voks',
+    'hey bucks',
+    'hey bocks',
+    'hey locks',
+    'hey rocks',
+    'hey walks',
+    'hey voice',
+    'hay vox',
+    'he vox',
+    'a vox',
+    'hey voc',
+    'hey vax',
   ];
 
-  static const int cooldownMs = 6000;
-  static const int restartDelayMs = 200;
-  static const int autoStartDelayMs = 400;
+  static final RegExp _heyVoxPattern = RegExp(
+    r'\b(hey|hay|he|a)\s+'
+    r'(vox|voks|box|fox|volks|bucks|bocks|locks|docs|rocks|walks|voc|vax|voice|votes|boxed)\b',
+    caseSensitive: false,
+  );
 
-  final SpeechToText _speech = SpeechToText();
+  static const int cooldownMs = 3000;
+  static const int autoStartDelayMs = 400;
+  static const int micHandoffDelayMs = 500;
+  static const int sessionRestartDelayMs = 500;
+  static const int watchdogIntervalMs = 2500;
+  static const int tailWordCount = 12;
+
+  SpeechToText _speech = SpeechToText();
 
   bool _active = false;
-  bool _paused = false;
+  bool _suspended = false;
   bool _cooldown = false;
-  bool _available = false;
-  bool _handlingTrigger = false;
+  bool _initialized = false;
+  bool _startingListen = false;
   Timer? _restartTimer;
   Timer? _cooldownTimer;
+  Timer? _watchdogTimer;
+  Timer? _sessionEndTimer;
 
-  /// Fired after the wake phrase is heard and the STT mic is released.
   VoidCallback? onTriggered;
 
-  bool get isAvailable => _available;
+  bool get isAvailable => _initialized;
   bool get isListening => _speech.isListening;
 
   Future<bool> initialize() async {
@@ -48,61 +67,109 @@ class WakeWordService {
       }
       return false;
     }
+    return _initSpeech();
+  }
 
-    _available = await _speech.initialize(
-      onStatus: _onStatus,
-      onError: _onError,
-      debugLogging: kDebugMode,
-    );
-
-    if (kDebugMode) {
-      debugPrint('WakeWordService: available=$_available');
+  Future<bool> _initSpeech() async {
+    try {
+      _initialized = await _speech.initialize(
+        onStatus: _onStatus,
+        onError: _onError,
+        debugLogging: kDebugMode,
+      );
+    } catch (e) {
+      _initialized = false;
+      if (kDebugMode) {
+        debugPrint('WakeWordService: init error $e');
+      }
     }
-    return _available;
+    if (kDebugMode) {
+      debugPrint('WakeWordService: initialized=$_initialized');
+    }
+    return _initialized;
   }
 
   void start() {
-    if (!_available) {
+    if (!_initialized) {
       return;
     }
     _active = true;
-    _paused = false;
-    _scheduleRestart(immediate: true);
+    _suspended = false;
+    _startWatchdog();
+    _scheduleListen(immediate: true);
   }
 
-  /// Stops wake-word recognition so [VoiceRecorder] can use the microphone.
   Future<void> pause() async {
-    _paused = true;
+    _suspended = true;
     _restartTimer?.cancel();
-    if (_speech.isListening) {
-      await _speech.stop();
-    }
+    _sessionEndTimer?.cancel();
+    await _stopListening();
   }
 
-  void resume() {
-    if (!_available || !_active) {
+  Future<void> resumeAfterVoice() async {
+    if (!_active) {
       return;
     }
-    _paused = false;
-    if (!_cooldown && !_handlingTrigger) {
-      _scheduleRestart(immediate: true);
+
+    _suspended = false;
+    _cooldown = false;
+    _cooldownTimer?.cancel();
+
+    await Future<void>.delayed(
+      const Duration(milliseconds: micHandoffDelayMs),
+    );
+
+    if (!_active || _suspended) {
+      return;
     }
+
+    await _resetSpeechEngine();
+    _scheduleListen(immediate: true);
+  }
+
+  Future<void> _resetSpeechEngine() async {
+    await _stopListening();
+    _speech = SpeechToText();
+    await _initSpeech();
   }
 
   void dispose() {
     _active = false;
-    _paused = true;
+    _suspended = true;
     _restartTimer?.cancel();
     _cooldownTimer?.cancel();
-    _speech.stop();
+    _watchdogTimer?.cancel();
+    _sessionEndTimer?.cancel();
+    unawaited(_stopListening());
   }
 
   static String normalizeTranscript(String raw) {
     return raw
         .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r"[^a-z0-9\s]"), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  static bool _isHeyToken(String word) {
+    return word == 'hey' || word == 'hay' || word == 'he' || word == 'a';
+  }
+
+  static bool _isVoxLikeToken(String word) {
+    if (word.isEmpty) {
+      return false;
+    }
+    const exact = {
+      'vox', 'voks', 'box', 'fox', 'volks', 'bucks', 'bocks', 'locks',
+      'docs', 'rocks', 'walks', 'voc', 'vax', 'voice', 'votes', 'boxed',
+    };
+    if (exact.contains(word)) {
+      return true;
+    }
+    return word.startsWith('vox') ||
+        word.startsWith('vok') ||
+        word.startsWith('box') ||
+        word.startsWith('fox');
   }
 
   static bool containsWakePhrase(String raw) {
@@ -110,78 +177,172 @@ class WakeWordService {
     if (normalized.isEmpty) {
       return false;
     }
-    return wakePhrases.any(normalized.contains);
+    if (wakePhrases.any(normalized.contains)) {
+      return true;
+    }
+    if (_heyVoxPattern.hasMatch(normalized)) {
+      return true;
+    }
+    final words = normalized.split(' ');
+    for (var i = 0; i < words.length - 1; i++) {
+      if (_isHeyToken(words[i]) && _isVoxLikeToken(words[i + 1])) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  void _scheduleRestart({bool immediate = false}) {
-    if (!_active || _paused || _cooldown || _handlingTrigger) {
+  static bool containsWakePhraseInTail(String raw, {int maxWords = tailWordCount}) {
+    final words = normalizeTranscript(raw).split(' ');
+    if (words.isEmpty) {
+      return false;
+    }
+    final tail =
+        words.length <= maxWords
+            ? words
+            : words.sublist(words.length - maxWords);
+    return containsWakePhrase(tail.join(' '));
+  }
+
+  void _startWatchdog() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(
+      const Duration(milliseconds: watchdogIntervalMs),
+      (_) {
+        if (!_active || _suspended || _cooldown || !_initialized) {
+          return;
+        }
+        if (_speech.isListening || _startingListen) {
+          return;
+        }
+        if (kDebugMode) {
+          debugPrint('WakeWordService: watchdog restart');
+        }
+        _scheduleListen(immediate: true);
+      },
+    );
+  }
+
+  void _scheduleListen({bool immediate = false}) {
+    if (!_active || _suspended || _cooldown || !_initialized) {
       return;
     }
     _restartTimer?.cancel();
     _restartTimer = Timer(
-      Duration(milliseconds: immediate ? 0 : restartDelayMs),
-      _tryStart,
+      Duration(milliseconds: immediate ? 0 : sessionRestartDelayMs),
+      () => unawaited(_tryStart()),
     );
   }
 
+  /// Android fires both status:done and error:no_match — debounce to one restart.
+  void _scheduleListenAfterSessionEnd() {
+    if (!_active || _suspended || _cooldown) {
+      return;
+    }
+    _sessionEndTimer?.cancel();
+    _sessionEndTimer = Timer(
+      const Duration(milliseconds: sessionRestartDelayMs),
+      () {
+        if (!_active || _suspended || _cooldown || _speech.isListening) {
+          return;
+        }
+        _scheduleListen(immediate: true);
+      },
+    );
+  }
+
+  Future<void> _stopListening() async {
+    try {
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (_) {}
+  }
+
   Future<void> _tryStart() async {
-    if (!_active || _paused || _cooldown || _handlingTrigger || !_available) {
+    if (!_active || _suspended || _cooldown || !_initialized || _startingListen) {
       return;
     }
     if (_speech.isListening) {
       return;
     }
 
+    _startingListen = true;
     try {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      if (!_active || _suspended || _cooldown) {
+        return;
+      }
+
+      // FREE_FORM model (dictation) — search/web mode returns empty for "hey vox".
       await _speech.listen(
         onResult: _onResult,
         listenOptions: SpeechListenOptions(
           partialResults: true,
           localeId: 'en_US',
           listenMode: ListenMode.dictation,
+          onDevice: false,
           cancelOnError: false,
           listenFor: const Duration(minutes: 30),
           pauseFor: const Duration(seconds: 5),
         ),
       );
+      if (kDebugMode) {
+        debugPrint('WakeWordService: listening (dictation/en_US)');
+      }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('WakeWordService: listen failed: $e');
+        debugPrint('WakeWordService: listen error $e');
       }
-      _scheduleRestart();
+      _scheduleListenAfterSessionEnd();
+    } finally {
+      _startingListen = false;
     }
   }
 
   void _onResult(SpeechRecognitionResult result) {
-    if (_cooldown || _handlingTrigger || _paused) {
+    if (_cooldown || _suspended) {
       return;
     }
 
-    final transcript = result.recognizedWords;
-    if (!containsWakePhrase(transcript)) {
-      return;
-    }
+    final transcripts = <String>{
+      result.recognizedWords,
+      for (final alt in result.alternates) alt.recognizedWords,
+    };
 
-    unawaited(_handleWakePhraseDetected());
+    for (final transcript in transcripts) {
+      final text = transcript.trim();
+      if (text.isEmpty) {
+        continue;
+      }
+      if (kDebugMode) {
+        debugPrint('WakeWordService: heard "$text"');
+      }
+      if (containsWakePhrase(text) || containsWakePhraseInTail(text)) {
+        if (kDebugMode) {
+          debugPrint('WakeWordService: wake phrase matched');
+        }
+        unawaited(_handleWakePhraseDetected());
+        return;
+      }
+    }
   }
 
   Future<void> _handleWakePhraseDetected() async {
-    if (_cooldown || _handlingTrigger || !_active) {
+    if (_cooldown || !_active) {
       return;
     }
 
-    _handlingTrigger = true;
     _cooldown = true;
     _restartTimer?.cancel();
-
-    await pause();
+    _sessionEndTimer?.cancel();
+    await _stopListening();
 
     _cooldownTimer?.cancel();
     _cooldownTimer = Timer(const Duration(milliseconds: cooldownMs), () {
       _cooldown = false;
-      _handlingTrigger = false;
-      if (_active && !_paused) {
-        _scheduleRestart(immediate: true);
+      if (_active && !_suspended) {
+        _scheduleListen(immediate: true);
       }
     });
 
@@ -192,32 +353,37 @@ class WakeWordService {
     if (_active) {
       onTriggered?.call();
     }
-
-    _handlingTrigger = false;
   }
 
   void _onStatus(String status) {
-    if (!_active || _paused || _cooldown || _handlingTrigger) {
+    if (!_active || _suspended || _cooldown) {
       return;
     }
-    if (status == 'done' ||
-        status == SpeechToText.notListeningStatus ||
-        status == SpeechToText.doneStatus) {
-      _scheduleRestart();
+    final s = status.toLowerCase();
+    if (s.contains('done') || s.contains('notlistening')) {
+      _scheduleListenAfterSessionEnd();
     }
   }
 
   void _onError(SpeechRecognitionError error) {
+    if (kDebugMode) {
+      debugPrint('WakeWordService: ${error.errorMsg}');
+    }
     final msg = error.errorMsg.toLowerCase();
-    if (msg.contains('error_permission') ||
+    if (msg.contains('permission') ||
         msg.contains('not-allowed') ||
-        msg.contains('permission') ||
-        msg.contains('service-not-allowed') ||
         msg.contains('recognizer_disabled')) {
       return;
     }
-    if (_active && !_paused && !_cooldown && !_handlingTrigger) {
-      _scheduleRestart();
+    if (_active && !_suspended && !_cooldown) {
+      _scheduleListenAfterSessionEnd();
     }
+  }
+
+  void onAppResumed() {
+    if (!_active || _suspended || !_initialized) {
+      return;
+    }
+    _scheduleListen(immediate: true);
   }
 }

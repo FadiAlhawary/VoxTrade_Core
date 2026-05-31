@@ -1,3 +1,4 @@
+import 'package:voxtrade_core/Components/ModelDto/TransferMoneyDtos.dart';
 import 'package:voxtrade_core/Components/ModelDto/WalletDTO.dart';
 import 'package:voxtrade_core/Components/ModelDto/WalletHistoryDTO.dart';
 import 'package:voxtrade_core/assembler/common/globalAJAXService.dart';
@@ -19,6 +20,18 @@ Future<WalletDto> getWallet(int userId, bool withHistory) {
     fromJson: (json) {
       return WalletDto.fromJson(json);
     },
+  );
+}
+
+Future<TransferMoneyResponseDto> transferMoney(
+  TransferMoneyRequestDto request,
+) {
+  return sendHttpPostRequest<TransferMoneyResponseDto>(
+    '/api/Wallet/Transfer',
+    body: request.toJson(),
+    fromJson:
+        (json) =>
+            TransferMoneyResponseDto.fromJson(json as Map<String, dynamic>),
   );
 }
 

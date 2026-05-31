@@ -25,8 +25,17 @@ class NewsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchMarketNews();
-    fetchCompanyNews();
+    // News loads when a screen requests it.
+  }
+
+  Future<void> ensureMarketNewsLoaded() async {
+    if (marketNews.isNotEmpty || isMarketNewsLoading.value) return;
+    await fetchMarketNews();
+  }
+
+  Future<void> ensureCompanyNewsLoaded() async {
+    if (companyNews.isNotEmpty || isCompanyNewsLoading.value) return;
+    await fetchCompanyNews();
   }
 
   Future<void> fetchCompanyNews() async {

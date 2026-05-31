@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:voxtrade_core/assembler/Services/voice_recorder.dart';
 import 'package:voxtrade_core/assembler/common/.env.dart';
+import 'package:voxtrade_core/utils/service_debug_logger.dart';
 
 class VoiceNlpService {
   VoiceNlpService()
@@ -9,7 +10,9 @@ class VoiceNlpService {
           connectTimeout: const Duration(seconds: 20),
           receiveTimeout: const Duration(seconds: 40),
         ),
-      );
+      ) {
+    attachServiceDebugLogging(_dio, tag: 'VoiceNlpService');
+  }
 
   final Dio _dio;
 
@@ -46,6 +49,15 @@ class VoiceNlpService {
       final responseBody = error.response?.data;
       final bodyMessage =
           responseBody is Map ? responseBody['detail']?.toString() : null;
+
+      ServiceDebugLogger.error(
+        tag: 'VoiceNlpService',
+        message: bodyMessage ?? error.message ?? 'Voice request failed',
+        method: error.requestOptions.method,
+        url: error.requestOptions.uri.toString(),
+        statusCode: statusCode,
+        responseData: responseBody,
+      );
 
       throw Exception(
         bodyMessage ??

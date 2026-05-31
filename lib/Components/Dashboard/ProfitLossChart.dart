@@ -213,11 +213,10 @@ class ProfitLossChart extends StatelessWidget {
     if (points.isEmpty) {
       return Container(
         decoration: cardDecoration,
-        child: Center(
-          child: Text(
-            'No profit/loss history in selected range',
-            style: TextStyle(color: scheme.onSurfaceVariant),
-          ),
+        alignment: Alignment.center,
+        child: Text(
+          'No profit/loss history in selected range',
+          style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       );
     }
@@ -230,97 +229,91 @@ class ProfitLossChart extends StatelessWidget {
     final delta = latestValue - previousValue;
     final isPositive = latestValue >= 0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          decoration: cardDecoration,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Container(
+      decoration: cardDecoration,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title ?? 'Profit / Loss',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: onRefresh,
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    tooltip: 'Refresh',
-                    color: mutedText,
-                    splashRadius: 20,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text(
-                    _formatCompact(latestValue),
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          (delta >= 0 ? Colors.green : Colors.red).withValues(
-                            alpha: 0.18,
-                          ),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: delta >= 0 ? Colors.greenAccent : Colors.redAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              AspectRatio(
-                aspectRatio: 1.7,
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    right: 8,
-                    left: 4,
-                    top: 8,
-                    bottom: 4,
-                  ),
-                  child: RepaintBoundary(
-                    child: LineChart(mainData(context, displayPoints)),
+              Expanded(
+                child: Text(
+                  title ?? 'Profit / Loss',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
-              if (prepared.isDownsampled)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
-                  child: Text(
-                    'Optimized view: sampled points for smoother rendering',
-                    style: TextStyle(fontSize: 10, color: Colors.white54),
-                  ),
-                ),
+              IconButton(
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                tooltip: 'Refresh',
+                color: mutedText,
+                splashRadius: 20,
+              ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text(
+                _formatCompact(latestValue),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (delta >= 0 ? Colors.green : Colors.red).withValues(
+                        alpha: 0.18,
+                      ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: delta >= 0 ? Colors.greenAccent : Colors.redAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 8,
+                left: 4,
+                top: 8,
+                bottom: 4,
+              ),
+              child: RepaintBoundary(
+                child: LineChart(mainData(context, displayPoints)),
+              ),
+            ),
+          ),
+          if (prepared.isDownsampled)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Optimized view: sampled points for smoother rendering',
+                style: TextStyle(fontSize: 10, color: mutedText),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

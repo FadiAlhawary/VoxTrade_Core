@@ -4,6 +4,7 @@ import 'package:voxtrade_core/Components/ModelDto/InstrumentDTO.dart';
 import 'package:voxtrade_core/Components/Market/MarketViewrCard.dart';
 import 'package:voxtrade_core/Components/PopUp/PopUpModal.dart';
 import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
+import 'package:voxtrade_core/Components/shimer/page_loading_shimmers.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 
 class Markets extends StatefulWidget {
@@ -31,6 +32,7 @@ class _MarketsState extends State<Markets> {
     final scheme = Theme.of(context).colorScheme;
 
     return Obx(() {
+      final isLoading = instrumentController.isLoading.value;
       final instruments = instrumentController.instruments.toList(
         growable: false,
       );
@@ -161,7 +163,9 @@ class _MarketsState extends State<Markets> {
             const SizedBox(height: 4),
             Expanded(
               child:
-                  filtered.isEmpty
+                  isLoading && instruments.isEmpty
+                      ? const MarketsListPageShimmer()
+                      : filtered.isEmpty
                       ? Center(
                         child: Text(
                           'No markets match your filters',

@@ -12,6 +12,10 @@ class UserDTO {
   final bool isAltEmailActive;
   final bool isPrimaryPhoneNumberActive;
   final bool isAltPhoneNumberActive;
+  final int? roleId;
+  final String? roleNameEn;
+  final bool isLocked;
+  final bool isDeleted;
 
   UserDTO({
     required this.id,
@@ -27,7 +31,15 @@ class UserDTO {
     required this.isAltEmailActive,
     required this.isPrimaryPhoneNumberActive,
     required this.isAltPhoneNumberActive,
+    this.roleId,
+    this.roleNameEn,
+    this.isLocked = false,
+    this.isDeleted = false,
   });
+
+  bool get isAdmin => roleId == 1;
+
+  bool get canAccessApp => !isLocked && !isDeleted;
 
   factory UserDTO.fromJson(Map<String, dynamic> json) {
     return UserDTO(
@@ -44,6 +56,10 @@ class UserDTO {
       isAltEmailActive: json['isAltEmailActive'] ?? false,
       isPrimaryPhoneNumberActive: json['isPrimaryPhoneNumberActive'] ?? false,
       isAltPhoneNumberActive: json['isAltPhoneNumberActive'] ?? false,
+      roleId: json['roleId'] as int?,
+      roleNameEn: json['roleNameEn'] as String?,
+      isLocked: json['isLocked'] ?? json['is_locked'] ?? false,
+      isDeleted: json['isDeleted'] ?? json['is_deleted'] ?? false,
     );
   }
 
@@ -62,6 +78,10 @@ class UserDTO {
       'isAltEmailActive': isAltEmailActive,
       'isPrimaryPhoneNumberActive': isPrimaryPhoneNumberActive,
       'isAltPhoneNumberActive': isAltPhoneNumberActive,
+      'roleId': roleId,
+      'roleNameEn': roleNameEn,
+      'isLocked': isLocked,
+      'isDeleted': isDeleted,
     };
   }
 }

@@ -10,4 +10,7 @@ abstract class RouteStrings {
   static const String portfolio = '/portfolio';
   static const String dashBoard = '/dash-board';
   static const String orders = '/orders';
+  static const String transferMoney = '/transfer-money';
+  static const String paymentMethods = '/payment-methods';
+  static const String addPaymentMethod = '/add-payment-method';
 }

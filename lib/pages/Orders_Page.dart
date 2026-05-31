@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:voxtrade_core/Components/Loader.dart';
+import 'package:voxtrade_core/Components/shimer/page_loading_shimmers.dart';
 import 'package:voxtrade_core/Components/cards/order_card.dart';
 import 'package:voxtrade_core/assembler/Controller/OrderHistory.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
@@ -23,7 +23,10 @@ class OrdersPage extends StatelessWidget {
         return Scaffold(
           backgroundColor: cs.surface,
           appBar: _ordersAppBar(textTheme, cs),
-          body: const Loader(isCenter: true),
+          body: const ListCardsPageShimmer(
+            padding: EdgeInsets.fromLTRB(10, 6, 10, 18),
+            cardHeight: 72,
+          ),
         );
       }
 

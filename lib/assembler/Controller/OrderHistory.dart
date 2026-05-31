@@ -19,10 +19,11 @@ class OrderHistoryController extends GetxController {
 
   int get _userId => Get.find<UserController>().user.value?.id ?? 0;
 
-  @override
-  void onInit() {
-    super.onInit();
-    fetchOrders();
+  Future<void> ensureLoaded() async {
+    if (_userId == 0) return;
+    if (isLoading.value) return;
+    if (orders.isNotEmpty || errorMessage.value != null) return;
+    await fetchOrders();
   }
 
   Future<void> fetchOrders({bool activeOnly = false}) async {

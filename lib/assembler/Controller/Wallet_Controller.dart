@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:voxtrade_core/Components/ModelDto/WalletDTO.dart';
 import 'package:voxtrade_core/Components/ModelDto/WalletHistoryDTO.dart';
@@ -5,9 +6,10 @@ import 'package:voxtrade_core/Components/SnackBar/SnackBarComp.dart';
 import 'package:voxtrade_core/Models/wallet_activity_models.dart';
 import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
 import 'package:voxtrade_core/assembler/Services/Wallet_Services.dart';
-import 'package:voxtrade_core/assembler/common/enum.dart';
+import 'package:voxtrade_core/assembler/common/wallet_guards.dart';
+import 'package:voxtrade_core/assembler/Controller/Payment_Method_Controller.dart';
 import 'package:voxtrade_core/pages/Wallet_History_Page.dart';
-import 'package:voxtrade_core/routes/route_names.dart';
+import 'package:voxtrade_core/pages/Transfer_Money_Page.dart';
 
 class WalletController extends GetxController {
   Rx<WalletDto> wallet =
@@ -22,9 +24,8 @@ class WalletController extends GetxController {
         updatedAt: DateTime.now(),
         walletHistory: [],
       ).obs;
-  final int userId = Get.find<UserController>().user.value?.id ?? 0;
+  int get _userId => Get.find<UserController>().user.value?.id ?? 0;
   RxBool isLoading = false.obs;
-  bool _didFetchHistory = false;
   RxList<WalletHistoryDto> walletHistory = <WalletHistoryDto>[].obs;
   RxList<int> walletHistoryForChart = <int>[].obs;
 
@@ -40,23 +41,18 @@ class WalletController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    if (!_didFetchHistory) {
-      _didFetchHistory = true;
-      fetchWallet();
-    }
+    // Loaded when the Wallet tab becomes visible.
   }
 
   Future<void> fetchWallet({bool withHistory = true}) async {
     try {
       isLoading.value = true;
-      final data = await getWallet(userId, withHistory);
+      final id = _userId;
+      if (id == 0) return;
+      final data = await getWallet(id, withHistory);
       wallet.value = data;
     } catch (e) {
-      SnackBarComp.show(
-        e.toString(),
-        title: "Error while fetching wallet",
-        status: SnackBarCompStatus.danger,
-      );
+      SnackBarComp.showError(e, title: 'Wallet unavailable');
     } finally {
       isLoading.value = false;
     }
@@ -67,14 +63,12 @@ class WalletController extends GetxController {
     DateTime to,
   ) async {
     try {
-      final data = await getWalletHistoryWithDate(userId, from, to);
+      final id = _userId;
+      if (id == 0) return [];
+      final data = await getWalletHistoryWithDate(id, from, to);
       return _buildDailyCounts(data, from, to);
     } catch (e) {
-      SnackBarComp.show(
-        e.toString(),
-        title: "Error while fetching wallet history with date for chart",
-        status: SnackBarCompStatus.danger,
-      );
+      SnackBarComp.showError(e, title: 'Wallet history unavailable');
       return [];
     }
   }
@@ -82,42 +76,47 @@ class WalletController extends GetxController {
   Future<void> fetchWalletHistoryWithDate(DateTime from, DateTime to) async {
     try {
       isLoading.value = true;
-      final data = await getWalletHistoryWithDate(userId, from, to);
+      final id = _userId;
+      if (id == 0) return;
+      final data = await getWalletHistoryWithDate(id, from, to);
       walletHistory.value = data;
-      walletHistoryForChart.value = _buildDailyCounts(
-        data,
-        from,
-        to,
-      );
+      walletHistoryForChart.value = _buildDailyCounts(data, from, to);
     } catch (e) {
-      SnackBarComp.show(
-        e.toString(),
-        title: "Error while fetching wallet history with date",
-        status: SnackBarCompStatus.danger,
-      );
+      SnackBarComp.showError(e, title: 'Wallet history unavailable');
     } finally {
       isLoading.value = false;
     }
   }
 
+  PaymentMethodController get _paymentMethods =>
+      Get.find<PaymentMethodController>();
+
   void addPaymentMethod() {
-    SnackBarComp.show(
-      'Payment method linking will be available soon.',
-      title: 'Coming soon',
-      status: SnackBarCompStatus.warning,
-    );
+    _paymentMethods.openAddPaymentMethodPage();
+  }
+
+  void openPaymentMethods() {
+    _paymentMethods.openPaymentMethodsPage();
+  }
+
+  Future<void> refreshWalletData() async {
+    await Future.wait([
+      fetchWallet(),
+      _paymentMethods.fetchUserPaymentMethods(),
+    ]);
   }
 
   void openFullWalletHistory() {
     Get.to(() => const WalletHistoryPage());
   }
 
-  void viewOrderHistory() {
-    Get.toNamed(RouteStrings.orders);
-  }
-
-  void viewTradeHistory() {
-    Get.toNamed(RouteStrings.portfolio);
+  void openTransferMoney() {
+    if (!ensureWalletCanTransact(wallet.value)) return;
+    final navContext = Get.context;
+    if (navContext == null) return;
+    Navigator.of(navContext, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => const TransferMoneyPage()),
+    );
   }
 
   List<int> _buildDailyCounts(

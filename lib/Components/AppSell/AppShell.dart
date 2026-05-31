@@ -8,7 +8,9 @@ import 'package:voxtrade_core/Components/common/Buttons/Button.dart';
 import 'package:voxtrade_core/assembler/Controller/Chatbot_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/Instrument_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/MarketController.dart';
+import 'package:voxtrade_core/assembler/Controller/Wallet_Controller.dart';
 import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
+import 'package:voxtrade_core/assembler/common/wallet_guards.dart';
 import 'package:voxtrade_core/assembler/Controller/Voice_Command_Settings_Controller.dart';
 import 'package:voxtrade_core/assembler/Services/Voice_Nlp_Service.dart';
 import 'package:voxtrade_core/assembler/Services/market_socket_service.dart';
@@ -24,6 +26,9 @@ import 'package:voxtrade_core/pages/Portfolio_Page.dart';
 import 'package:voxtrade_core/pages/User_Info_Page.dart';
 import 'package:voxtrade_core/pages/Settings_Page.dart';
 import 'package:voxtrade_core/pages/Chatbot_Page.dart';
+import 'package:voxtrade_core/pages/admin/Admin_Home_Page.dart';
+import 'package:voxtrade_core/assembler/Controller/User_&_Auth/User_Controller.dart';
+import 'package:voxtrade_core/pages/Transfer_Money_Page.dart';
 
 import '../../assembler/Controller/NavBarController.dart';
 import '../../pages/Markets.dart';
@@ -36,7 +41,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final VoiceRecorder _recorder = VoiceRecorder();
   final VoiceNlpService _voiceNlpService = VoiceNlpService();
   final InstrumentController _instrumentController =
@@ -48,6 +53,7 @@ class _AppShellState extends State<AppShell>
   final WakeWordService _wakeWord = WakeWordService();
   bool _isVoiceListening = false;
   bool _isVoiceProcessing = false;
+
   /// 0 = listening; fills toward 1 during silence, resets if user speaks again.
   double _voiceFinishProgress = 0;
   bool _isExecutingVoiceOrder = false;
@@ -61,7 +67,15 @@ class _AppShellState extends State<AppShell>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    WidgetsBinding.instance.addObserver(this);
     _initWakeWord();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userController = Get.find<UserController>();
+      if (userController.isLoggedIn.value &&
+          userController.user.value?.roleNameEn == null) {
+        userController.fetchUserProfileData();
+      }
+    });
   }
 
   Future<void> _initWakeWord() async {
@@ -92,15 +106,31 @@ class _AppShellState extends State<AppShell>
     }
   }
 
-  void _resumeWakeWordListening() {
-    if (!mounted || _isVoiceListening || _isVoiceProcessing) {
+  Future<void> _resumeWakeWordListening() async {
+    if (!mounted) {
       return;
     }
-    _wakeWord.resume();
+    if (_isVoiceListening || _isVoiceProcessing) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      if (!mounted || _isVoiceListening || _isVoiceProcessing) {
+        return;
+      }
+    }
+    await _wakeWord.resumeAfterVoice();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        !_isVoiceListening &&
+        !_isVoiceProcessing) {
+      _wakeWord.onAppResumed();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _silenceMonitor.stop();
     _wakeWord.dispose();
     _edgeGlowController.dispose();
@@ -393,6 +423,13 @@ class _AppShellState extends State<AppShell>
       return;
     }
 
+    if (Get.isRegistered<WalletController>()) {
+      final wallet = Get.find<WalletController>().wallet.value;
+      if (!ensureWalletCanTransact(wallet)) {
+        return;
+      }
+    }
+
     setState(() {
       _isExecutingVoiceOrder = true;
     });
@@ -500,6 +537,86 @@ class _AppShellState extends State<AppShell>
     return '';
   }
 
+  Widget _buildDrawerTile({
+    required BuildContext context,
+    required _DrawerRouteItem item,
+    required bool isDarkMode,
+    required ColorScheme scheme,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Get.back();
+          if (item.onTap != null) {
+            item.onTap!.call();
+            return;
+          }
+          if (item.pageBuilder != null) {
+            Get.to(item.pageBuilder!);
+          }
+        },
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color:
+                isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.88),
+            border: Border.all(color: primaryColor.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(item.icon, color: primaryColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDarkMode ? Colors.white : scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            isDarkMode
+                                ? Colors.white70
+                                : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 15,
+                color: isDarkMode ? Colors.white70 : scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _orderLine(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -522,6 +639,7 @@ class _AppShellState extends State<AppShell>
   Widget build(BuildContext context) {
     final conroller = Get.put(NavBarController());
     final themeController = Get.find<ThemeController>();
+    final userController = Get.find<UserController>();
     final drawerRoutes = <_DrawerRouteItem>[
       _DrawerRouteItem(
         title: 'User Info',
@@ -541,6 +659,22 @@ class _AppShellState extends State<AppShell>
       //   icon: Icons.auto_graph_rounded,
       //   pageBuilder: () => Markets(),
       // ),
+      _DrawerRouteItem(
+        title: 'Transfer funds',
+        subtitle: 'Send money to another user',
+        icon: Icons.swap_horiz_rounded,
+        onTap: () {
+          if (Get.isRegistered<WalletController>()) {
+            Get.find<WalletController>().openTransferMoney();
+            return;
+          }
+          final navContext = Get.context;
+          if (navContext == null) return;
+          Navigator.of(navContext, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => const TransferMoneyPage()),
+          );
+        },
+      ),
       _DrawerRouteItem(
         title: 'Settings',
         subtitle: 'Appearance and voice models',
@@ -583,6 +717,14 @@ class _AppShellState extends State<AppShell>
       //   icon: Icons.lightbulb_outline_rounded,
       //   onTap: () => SnackBarComp.show('Add your next page in drawerRoutes'),
       // ),
+    ];
+    final adminDrawerRoutes = <_DrawerRouteItem>[
+      _DrawerRouteItem(
+        title: 'Admin panel',
+        subtitle: 'Dashboard, users, wallets',
+        icon: Icons.admin_panel_settings_rounded,
+        pageBuilder: () => const AdminHomePage(),
+      ),
     ];
 
     return GetBuilder<NavBarController>(
@@ -688,114 +830,85 @@ class _AppShellState extends State<AppShell>
                             ),
                           ),
                           Expanded(
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(
-                                12,
-                                14,
-                                12,
-                                14,
-                              ),
-                              itemCount: drawerRoutes.length,
-                              separatorBuilder:
-                                  (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (_, index) {
-                                final item = drawerRoutes[index];
-                                return Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () {
-                                      Get.back();
-                                      if (item.onTap != null) {
-                                        item.onTap!.call();
-                                        return;
-                                      }
-                                      if (item.pageBuilder != null) {
-                                        Get.to(item.pageBuilder!);
-                                      }
-                                    },
-                                    child: Ink(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        color:
-                                            isDarkMode
-                                                ? Colors.white.withValues(
-                                                  alpha: 0.08,
-                                                )
-                                                : Colors.white.withValues(
-                                                  alpha: 0.88,
-                                                ),
-                                        border: Border.all(
-                                          color: primaryColor.withValues(
-                                            alpha: 0.14,
-                                          ),
-                                        ),
+                            child: Obx(() {
+                              final isAdmin =
+                                  userController.user.value?.isAdmin ?? false;
+                              return ListView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  14,
+                                  12,
+                                  14,
+                                ),
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < drawerRoutes.length;
+                                    i++
+                                  ) ...[
+                                    if (i > 0) const SizedBox(height: 8),
+                                    _buildDrawerTile(
+                                      context: context,
+                                      item: drawerRoutes[i],
+                                      isDarkMode: isDarkMode,
+                                      scheme: scheme,
+                                    ),
+                                  ],
+                                  if (isAdmin) ...[
+                                    const SizedBox(height: 16),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 4,
                                       ),
                                       child: Row(
                                         children: [
-                                          Container(
-                                            width: 40,
-                                            height: 40,
-                                            decoration: BoxDecoration(
-                                              color: primaryColor.withValues(
-                                                alpha: 0.14,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Icon(
-                                              item.icon,
-                                              color: primaryColor,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.title,
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        isDarkMode
-                                                            ? Colors.white
-                                                            : scheme.onSurface,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  item.subtitle,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        isDarkMode
-                                                            ? Colors.white70
-                                                            : scheme
-                                                                .onSurfaceVariant,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
                                           Icon(
-                                            Icons.arrow_forward_ios_rounded,
-                                            size: 15,
-                                            color:
-                                                isDarkMode
-                                                    ? Colors.white70
-                                                    : scheme.onSurfaceVariant,
+                                            Icons.admin_panel_settings_rounded,
+                                            size: 18,
+                                            color: primaryColor,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Admin',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.4,
+                                              color:
+                                                  isDarkMode
+                                                      ? Colors.white70
+                                                      : scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Divider(
+                                              color: primaryColor.withValues(
+                                                alpha: 0.2,
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                                    const SizedBox(height: 8),
+                                    for (final item in adminDrawerRoutes)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: _buildDrawerTile(
+                                          context: context,
+                                          item: item,
+                                          isDarkMode: isDarkMode,
+                                          scheme: scheme,
+                                        ),
+                                      ),
+                                  ],
+                                ],
+                              );
+                            }),
                           ),
                         ],
                       ),
@@ -945,7 +1058,8 @@ class _AppShellState extends State<AppShell>
                                               if (_isVoiceListening) ...[
                                                 const SizedBox(height: 14),
                                                 _VoiceSilenceProgressBar(
-                                                  progress: _voiceFinishProgress,
+                                                  progress:
+                                                      _voiceFinishProgress,
                                                   isDark: isDark,
                                                   scheme: scheme,
                                                 ),
@@ -1096,8 +1210,8 @@ class _BottomTradeNav extends StatelessWidget {
 
                   Expanded(
                     child: _NavItem(
-                      icon: Icons.person_outline_rounded,
-                      label: 'Assets',
+                      icon: Icons.account_balance_wallet_rounded,
+                      label: 'Wallet',
                       isSelected: currentIndex == 4,
                       selectedColor: selected,
                       unselectedColor: inactive,

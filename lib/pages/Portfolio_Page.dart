@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class PortfolioPage extends StatefulWidget {
 class _PortfolioPageState extends State<PortfolioPage>
     with SingleTickerProviderStateMixin {
   static const _shimmerDuration = Duration(milliseconds: 950);
-  static const int _tradeTabIndex = 3;
+  static const int _portfolioNavTabIndex = 0;
   late final AnimationController _shimmerAnimCtrl;
 
   late final PortfolioController _portfolioController;
@@ -47,7 +48,7 @@ class _PortfolioPageState extends State<PortfolioPage>
   String _selectedPortfolio = 'Growth';
   int _assetScope = 5;
   bool _assetScopeInitialized = false;
-  bool _wasTradeTabVisible = false;
+  bool _wasPortfolioTabVisible = false;
 
   @override
   void didChangeDependencies() {
@@ -99,14 +100,15 @@ class _PortfolioPageState extends State<PortfolioPage>
     final navController = Get.find<NavBarController>();
     return GetBuilder<NavBarController>(
       builder: (_) {
-        final isTradeVisible = navController.tabIndex == _tradeTabIndex;
-        if (isTradeVisible && !_wasTradeTabVisible) {
-          _wasTradeTabVisible = true;
+        final isPortfolioVisible =
+            navController.tabIndex == _portfolioNavTabIndex;
+        if (isPortfolioVisible && !_wasPortfolioTabVisible) {
+          _wasPortfolioTabVisible = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _refreshCurrentTabData();
           });
-        } else if (!isTradeVisible) {
-          _wasTradeTabVisible = false;
+        } else if (!isPortfolioVisible) {
+          _wasPortfolioTabVisible = false;
         }
 
         return Obx(() {
@@ -170,6 +172,22 @@ class _PortfolioPageState extends State<PortfolioPage>
       return;
     }
     await _tradeHistoryController.fetchTrades();
+  }
+
+  void _onPortfolioSectionSelected(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+      if (index == 1) {
+        _visibleOrdersCount = _historyInitialCount;
+      } else if (index == 2) {
+        _visibleTradesCount = _historyInitialCount;
+      }
+    });
+    if (index == 1) {
+      unawaited(_orderHistoryController.ensureLoaded());
+    } else if (index == 2) {
+      unawaited(_tradeHistoryController.ensureLoaded());
+    }
   }
 
   Widget _buildTabBody({
@@ -262,10 +280,10 @@ class _PortfolioPageState extends State<PortfolioPage>
                     _buildAssetScopeTabs(context),
                     const SizedBox(height: 12),
                     _buildAssetsTableCard(
-            context,
-            scopedPositions,
-            totalCount: positions.length,
-          ),
+                      context,
+                      scopedPositions,
+                      totalCount: positions.length,
+                    ),
                   ],
                 ),
               ),
@@ -553,8 +571,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                       _moneyCell(
                         flex: 3,
                         value: _money(
-                          (item.quantity * _effectivePrice(item) * 0.32)
-                              .abs(),
+                          (item.quantity * _effectivePrice(item) * 0.32).abs(),
                         ),
                         textAlign: TextAlign.end,
                         style: textTheme.bodyMedium!.copyWith(
@@ -653,7 +670,8 @@ class _PortfolioPageState extends State<PortfolioPage>
       0,
       (sum, item) => sum + _liveMarketValue(item),
     );
-    final chartItems = positions.take(_assetScope == _assetScopeAll ? 10 : 5).toList();
+    final chartItems =
+        positions.take(_assetScope == _assetScopeAll ? 10 : 5).toList();
     final allocationTitle =
         _assetScope == _assetScopeAll
             ? 'Dollar Allocations (All ${positions.length})'
@@ -1270,7 +1288,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'Assets ($positionsCount)',
               isSelected: _selectedTabIndex == 0,
-              onTap: () => setState(() => _selectedTabIndex = 0),
+              onTap: () => _onPortfolioSectionSelected(0),
             ),
           ),
           Expanded(
@@ -1278,11 +1296,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'Orders',
               isSelected: _selectedTabIndex == 1,
-              onTap:
-                  () => setState(() {
-                    _selectedTabIndex = 1;
-                    _visibleOrdersCount = _historyInitialCount;
-                  }),
+              onTap: () => _onPortfolioSectionSelected(1),
             ),
           ),
           Expanded(
@@ -1290,11 +1304,7 @@ class _PortfolioPageState extends State<PortfolioPage>
               context,
               'History',
               isSelected: _selectedTabIndex == 2,
-              onTap:
-                  () => setState(() {
-                    _selectedTabIndex = 2;
-                    _visibleTradesCount = _historyInitialCount;
-                  }),
+              onTap: () => _onPortfolioSectionSelected(2),
             ),
           ),
         ],
