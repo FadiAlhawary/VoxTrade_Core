@@ -145,6 +145,22 @@ class ChatbotController extends GetxController {
     inputController.selection = TextSelection.collapsed(offset: text.length);
   }
 
+  /// Jumps to the latest message when the chat screen opens.
+  void scrollToBottomOnOpen() {
+    void jump() {
+      if (!scrollController.hasClients) {
+        return;
+      }
+      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+    }
+
+    // Two frames: first attaches the list, second measures all items.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      jump();
+      WidgetsBinding.instance.addPostFrameCallback((_) => jump());
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) {

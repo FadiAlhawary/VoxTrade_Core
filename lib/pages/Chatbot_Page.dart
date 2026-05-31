@@ -9,8 +9,19 @@ import 'package:voxtrade_core/assembler/Controller/ThemeController.dart';
 import 'package:voxtrade_core/assembler/Models/chat_message.dart';
 import 'package:voxtrade_core/assembler/common/enum.dart';
 
-class ChatbotPage extends StatelessWidget {
+class ChatbotPage extends StatefulWidget {
   const ChatbotPage({super.key});
+
+  @override
+  State<ChatbotPage> createState() => _ChatbotPageState();
+}
+
+class _ChatbotPageState extends State<ChatbotPage> {
+  @override
+  void initState() {
+    super.initState();
+    Get.find<ChatbotController>().scrollToBottomOnOpen();
+  }
 
   @override
   Widget build(BuildContext context) {
