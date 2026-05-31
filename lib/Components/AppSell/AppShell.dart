@@ -83,11 +83,6 @@ class _AppShellState extends State<AppShell>
       if (!mounted || _isVoiceListening || _isVoiceProcessing) {
         return;
       }
-      SnackBarComp.show(
-        'Listening for your command…',
-        title: 'Hey Vox',
-        status: SnackBarCompStatus.info,
-      );
       unawaited(_startVoiceListening());
     };
 
@@ -378,7 +373,6 @@ class _AppShellState extends State<AppShell>
       _isVoiceProcessing = false;
       _voiceFinishProgress = 0;
     });
-    SnackBarComp.show('Voice command canceled.');
     _resumeWakeWordListening();
   }
 
